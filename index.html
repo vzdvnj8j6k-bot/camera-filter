@@ -200,6 +200,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <label class="field" id="r-ticker"><span id="l-ticker">流れる文字</span><input type="text" id="f-ticker"></label>
     <label class="field" id="r-time"><span id="l-time">時刻</span><input type="text" id="f-time"></label>
     <label class="field" id="r-suf"><span id="l-suf">名前の後ろ</span><input type="text" id="f-suf"></label>
+    <label class="field" id="r-time2"><span id="l-time2">右の名前</span><input type="text" id="f-time2"></label>
+    <label class="field" id="r-suf2"><span id="l-suf2">右の名前の後ろ</span><input type="text" id="f-suf2"></label>
     <label class="field" id="r-scroll"><span id="l-scroll">スクロールニュース</span><input type="text" id="f-scroll" autocomplete="off"></label>
     <label class="field" id="r-red"><span id="l-red">赤文字</span><input type="text" id="f-red" autocomplete="off"></label>
     <label class="field" id="r-blue"><span id="l-blue">青文字</span><input type="text" id="f-blue" autocomplete="off"></label>
@@ -427,6 +429,20 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       if (bold) fat(c, run, x, y); else c.fillText(run, x, y);
       richOn = false; x += c.measureText(run).width; i = j;
     }
+  }
+  /* big surname with a smaller "容疑者" and a smaller age, centred on cx */
+  function suspectName(c, time, suf, cx, y, maxW, size) {
+    var fs1 = fit(c, time || "", "900", SERIF, size, maxW, 28) || size;
+    var w1 = time ? c.measureText(time).width : 0;
+    var s1 = Math.round(fs1 * 0.72), s2 = Math.round(fs1 * 0.5), sp = splitSuf(suf || "");
+    c.font = "900 " + s1 + "px " + SERIF; var w2a = sp[0] ? c.measureText(sp[0]).width : 0;
+    c.font = "900 " + s2 + "px " + SERIF; var w2b = sp[1] ? c.measureText(sp[1]).width : 0;
+    var w2 = w2a + w2b, sc = Math.min(1, maxW / Math.max(1, w1 + w2)), xs = cx - (w1 + w2) * sc / 2;
+    c.save(); c.translate(xs, 0); c.scale(sc, 1); c.textAlign = "left";
+    if (time) { c.font = "900 " + fs1 + "px " + SERIF; outlined(c, time, 0, y, 11, "#fff"); }
+    if (sp[0]) { c.font = "900 " + s1 + "px " + SERIF; outlined(c, sp[0], w1, y, 8, "#fff"); }
+    if (sp[1]) { c.font = "900 " + s2 + "px " + SERIF; outlined(c, sp[1], w1 + w2a, y, 6, "#fff"); }
+    c.restore(); c.textAlign = "left";
   }
   function headLines(s) {
     var a = String(s || "").split("\n").filter(function (x) { return x.length; });
@@ -884,7 +900,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   };
 
   /* Split-screen flash layout: main photo left, second photo right, white pill headline (red "tab" + partly red text) at the top right. */
-  F.newsd = { name: "速報・2分割(横長)", size: [1280, 720], fields: { name: "右下のロゴ", tag: "赤いタブ", headline: "見出し(前半・黒)", red: "見出し(強調・赤)", sub: "見出し(後半・黒)" } };
+  F.newsd = { name: "速報・2分割(横長)", size: [1280, 720], fields: { name: "右下のロゴ", tag: "赤いタブ", headline: "見出し(前半・黒)", red: "見出し(強調・赤)", sub: "見出し(後半・黒)", time: "左の人の名前", suf: "左の人の名前の後ろ", time2: "右の人の名前", suf2: "右の人の名前の後ろ" } };
   F.newsd.draw = function (c, S) {
     var w = 1280, h = 720, t = S.t;
     c.save(); c.beginPath(); c.rect(0, 0, 640, h); c.clip(); cover(c, S.main, 0, 0, 640, h); c.restore();
@@ -906,6 +922,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
     var x = px + tabw + 22; c.font = "900 " + size + "px " + SANS;
     parts.forEach(function (p) { c.fillStyle = p[1]; c.fillText(p[0], x, py + ph / 2 + 2); x += c.measureText(p[0]).width; });
+    c.textBaseline = "middle";
+    if (t.time || t.suf) suspectName(c, t.time, t.suf, 320, 612, 600, 76);
+    if (t.time2 || t.suf2) suspectName(c, t.time2, t.suf2, 960, 612, 600, 76);
     if (t.name) {
       c.font = "700 24px " + SANS;
       var lw = c.measureText(t.name).width + 24;
@@ -915,7 +934,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   };
 
   var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "dual"];
-  var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue"];
+  var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue", "time2", "suf2"];
 
   /* ---------- state ---------- */
   var texts = {
@@ -923,7 +942,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し友人に見せるなどした疑い" },
-    newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定" },
+    newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定", time: "あなた", suf: "容疑者(19)", time2: "友人", suf2: "容疑者(20)" },
     led: { headline: "ようこそ 東京へ" },
     shibuya: { name: "SHIBUYA" },
     times: { name: "TOKYO", headline: "あなた", sub: "THE NEW PHOTO / THE GREATEST ME" },
@@ -940,7 +959,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newst: ["name", "tag", "place", "time", "headline"],
-    newsd: ["tag", "headline"]
+    newsd: ["tag", "headline", "time", "time2"]
   };
   var RICH_KEYS = { news: ["headline"], newsw: ["headline"], newst: ["headline", "tag", "place", "red", "blue"] };
   function placeholder(k) { return "　　　" + new Array(FIELD_KEYS.indexOf(k) + 2).join("​"); }
