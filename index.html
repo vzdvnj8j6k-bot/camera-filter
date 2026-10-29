@@ -2206,13 +2206,24 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   /* profile-photo frame: the person (taken from the face-filtered photo when the filter is on) on a white studio background */
   var profCut = null, profBusy = false;
   function profileBase() { return (shaped.canvas && shaped.src === state.main) ? shaped.canvas : state.main; }
+  /* a photo that already has a transparent background (e.g. cut out with remove.bg) is used as the person as it is */
+  function alphaCut(src) {
+    var sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height, k = Math.min(1, 1536 / Math.max(sw, sh));
+    var cvs = document.createElement("canvas"); cvs.width = Math.round(sw * k); cvs.height = Math.round(sh * k);
+    var x = cvs.getContext("2d"); x.drawImage(src, 0, 0, cvs.width, cvs.height);
+    var d; try { d = x.getImageData(0, 0, cvs.width, cvs.height).data; } catch (e) { return null; }
+    var n = 0, tot = 0, i;
+    for (i = 3; i < d.length; i += 64) { tot++; if (d[i] < 200) n++; }
+    return n / tot > 0.08 ? cvs : null;
+  }
   function profileSync() {
     if (profBusy || !have.main) return;
     var base = profileBase();
     if (profCut && profCut.src === base) return;
     if (shaped.on && !(shaped.canvas && shaped.src === state.main) && !shaped.failed) return;
     profBusy = true;
-    segmentPerson(base).then(function (sm) {
+    var pre = alphaCut(base);
+    (pre ? Promise.resolve(pre) : segmentPerson(base)).then(function (sm) {
       var w = sm.width, h = sm.height, d = sm.getContext("2d").getImageData(0, 0, w, h).data, x0 = w, y0 = h, x1 = 0, y1 = 0, x, y;
       for (y = 0; y < h; y += 2) for (x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] > 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       var ok = x1 > x0 && y1 > y0;
