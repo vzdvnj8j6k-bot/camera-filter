@@ -216,7 +216,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <label class="check"><input type="checkbox" id="tv-on" checked>テレビ画面風の質感（ざらつき・ぼかし）</label>
     <div class="seg" style="grid-template-columns: 1fr 1fr">
       <button type="button" id="animPrev">動きをプレビュー</button>
-      <button type="button" id="animRec">動画で保存(8秒)</button>
+      <button type="button" id="animRec">動画で保存</button>
       <button type="button" id="animShare" style="grid-column: 1 / -1" disabled>動画をSNSなどに共有（録画後に使えます）</button>
     </div>
     <label class="check"><input type="checkbox" id="narr-on" checked>「動きをプレビュー」「動画で保存」に合わせて読み上げる</label>
@@ -1355,48 +1355,162 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     ["tag", "place", "red", "blue"].forEach(function (k) { if (t[k]) out.push(t[k]); });
     if (t.time || t.suf) out.push((t.time || "") + (t.suf || ""));
     ["headline", "sub", "when"].forEach(function (k) { if (t[k]) out.push(String(t[k]).replace(/\n/g, "")); });
-    return out.join("。");
+    return out.length ? out.join("。") + "。" : "";
   }
+  var VV = [["11", "玄野武宏（男性・ニュース向き）"], ["13", "青山龍星（男性・低め）"], ["8", "春日部つむぎ（女性）"], ["2", "四国めたん（女性）"]];
+  function vvName(id) { var n = ""; VV.forEach(function (p) { if (p[0] === id) n = p[1].replace(/（.*/, ""); }); return n; }
   function fillVoices() {
-    if (!synth) return;
-    var sel = $("narrVoice"), keep = sel.value, list = synth.getVoices().filter(function (v) { return /^ja/i.test(v.lang); });
+    var sel = $("narrVoice"), keep = sel.value;
     sel.innerHTML = "";
-    if (!list.length) { var o = document.createElement("option"); o.textContent = "日本語の声が見つかりません"; o.value = ""; sel.appendChild(o); return; }
-    list.forEach(function (v) { var o = document.createElement("option"); o.value = v.name; o.textContent = v.name; sel.appendChild(o); });
-    if (keep) sel.value = keep;
+    var g1 = document.createElement("optgroup"); g1.label = "自然な声（VOICEVOX・無料・ネット接続が必要）";
+    VV.forEach(function (p) { var o = document.createElement("option"); o.value = "vv:" + p[0]; o.textContent = p[1]; g1.appendChild(o); });
+    sel.appendChild(g1);
+    var list = synth ? synth.getVoices().filter(function (v) { return /^ja/i.test(v.lang); }) : [];
+    if (list.length) {
+      var g2 = document.createElement("optgroup"); g2.label = "ブラウザ内蔵の声（棒読みになりやすい・動画には入りません）";
+      list.forEach(function (v) { var o = document.createElement("option"); o.value = "br:" + v.name; o.textContent = v.name; g2.appendChild(o); });
+      sel.appendChild(g2);
+    }
+    if (keep && sel.querySelector('option[value="' + keep.replace(/"/g, "") + '"]')) sel.value = keep;
+    showNarrNote();
   }
-  if (synth) { fillVoices(); synth.onvoiceschanged = fillVoices; }
-  function speakNow() {
+  function showNarrNote() {
+    var v = $("narrVoice").value;
+    $("narrNote").textContent = v.indexOf("vv:") === 0
+      ? "声：VOICEVOX:" + vvName(v.slice(3)) + "（無料）。原稿の文字だけが外部サービス(tts.quest)に送られ、写真は送られません。この声は録画した動画にも入ります。SNSに投稿するときは「VOICEVOX:" + vvName(v.slice(3)) + "」とクレジットを書いてください。読み間違いは、原稿欄にひらがなで書くと直せます。"
+      : "ブラウザ内蔵の声です。棒読みや読み間違いが出やすく、録画した動画には入りません。";
+  }
+  fillVoices(); if (synth) synth.onvoiceschanged = fillVoices;
+
+  var actx = null, mdest = null, curSrc = null, narrBuf = null, narrBusy = false;
+  function audioInit() {
+    if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; actx = new AC(); mdest = actx.createMediaStreamDestination(); }
+    if (actx.state === "suspended") actx.resume();
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  var vvCache = {};
+  function vvFetch(text, speaker, attempt) {
+    return fetch("https://api.tts.quest/v3/voicevox/synthesis?text=" + encodeURIComponent(text) + "&speaker=" + speaker).then(function (r) {
+      if (r.status === 429 && attempt < 4) { $("msg").textContent = "混み合っているため、少し待って再試行します…"; return sleep(3000 * (attempt + 1)).then(function () { return vvFetch(text, speaker, attempt + 1); }); }
+      return r.json();
+    });
+  }
+  function vvChunk(text, speaker) {
+    var key = speaker + "|" + text;
+    if (vvCache[key]) return Promise.resolve(vvCache[key]);
+    return vvFetch(text, speaker, 0)
+      .then(function (j) {
+        if (!j.success) throw new Error("synth");
+        var tries = 0;
+        function poll() {
+          return fetch(j.audioStatusUrl).then(function (r) { return r.json(); }).then(function (s) {
+            if (s.isAudioError) throw new Error("audio");
+            if (s.isAudioReady) return fetch(j.wavDownloadUrl).then(function (r) { return r.arrayBuffer(); });
+            if (++tries > 40) throw new Error("timeout");
+            return sleep(600).then(poll);
+          });
+        }
+        return poll();
+      })
+      .then(function (ab) { return new Promise(function (res, rej) { actx.decodeAudioData(ab, res, rej); }); })
+      .then(function (buf) { vvCache[key] = buf; return buf; });
+  }
+  function splitNarr(text) {
+    var sents = text.match(/[^。！？!?\n]+[。！？!?]?/g) || [text], chunks = [];
+    sents.forEach(function (s) {
+      s = s.trim();
+      if (!s) return;
+      while (s.length > 90) { chunks.push(s.slice(0, 90)); s = s.slice(90); }
+      chunks.push(s);
+    });
+    return chunks;
+  }
+  /* one request per sentence, with a pause after each, so the delivery has breaks like a newsreader */
+  async function vvBuffer(text, speaker) {
+    var parts = [], gaps = [], i, total = 0, chunks = splitNarr(text), sr = actx.sampleRate;
+    for (i = 0; i < chunks.length; i++) {
+      var b = await vvChunk(chunks[i], speaker), g = Math.round(sr * (/[。！？!?]$/.test(chunks[i]) ? 0.65 : 0.4));
+      if (i === chunks.length - 1) g = Math.round(sr * 0.2);
+      parts.push(b); gaps.push(g); total += b.length + g;
+      if (i < chunks.length - 1) await sleep(600);
+    }
+    var out = actx.createBuffer(1, Math.max(1, total), sr), data = out.getChannelData(0), pos = 0;
+    parts.forEach(function (b, k) { data.set(b.getChannelData(0), pos); pos += b.length + gaps[k]; });
+    return out;
+  }
+  function stopNarr() {
+    try { if (curSrc) curSrc.stop(); } catch (e) {}
+    curSrc = null; clearTimeout(speakTimer); if (synth) synth.cancel();
+  }
+  function playBuffer(buf, delay) {
+    stopNarr();
+    var s = actx.createBufferSource(); s.buffer = buf; s.playbackRate.value = +$("narrRate").value / 100;
+    s.connect(actx.destination); s.connect(mdest); s.start(actx.currentTime + delay); curSrc = s;
+  }
+  function speakBrowser(delay) {
     if (!synth) { $("msg").textContent = "この端末のブラウザは読み上げに対応していません。"; return; }
-    synth.cancel();
+    stopNarr();
     var text = narrText();
     if (!text) return;
     var u = new SpeechSynthesisUtterance(text);
     u.lang = "ja-JP"; u.rate = +$("narrRate").value / 100;
-    var vn = $("narrVoice").value;
+    var vn = $("narrVoice").value.replace(/^br:/, "");
     if (vn) { var v = synth.getVoices().filter(function (x) { return x.name === vn; })[0]; if (v) u.voice = v; }
-    synth.speak(u);
+    speakTimer = setTimeout(function () { synth.speak(u); }, (delay || 0) * 1000);
   }
-  function speakSoon() { clearTimeout(speakTimer); if ($("narr-on").checked) speakTimer = setTimeout(speakNow, 1200); }
+  /* get the narration ready (VOICEVOX audio fetched and decoded), so playback and recording start in sync */
+  async function prepareNarr() {
+    narrBuf = null; useBrowserFallback = false;
+    if (!$("narr-on").checked && !narrForce) return;
+    var v = $("narrVoice").value, text = narrText();
+    if (!text || v.indexOf("vv:") !== 0) return;
+    $("msg").textContent = "音声を準備中です…";
+    try { audioInit(); narrBuf = await vvBuffer(text, v.slice(3)); $("msg").textContent = ""; }
+    catch (e) { console.warn("narration fetch failed", e); narrBuf = null; $("msg").textContent = "自然な声を取得できなかったため、ブラウザ内蔵の声を使います。"; useBrowserFallback = true; }
+  }
+  var narrForce = false, useBrowserFallback = false;
+  function startNarr(delay) {
+    if (narrBuf) { playBuffer(narrBuf, delay); return; }
+    var v = $("narrVoice").value;
+    if ($("narr-on").checked || narrForce) {
+      if (v.indexOf("vv:") === 0 && !useBrowserFallback) return;
+      speakBrowser(delay);
+    }
+  }
   $("narrRate").addEventListener("input", function () { $("narrRateO").textContent = (+$("narrRate").value / 100).toFixed(1); save(); });
   $("narr").addEventListener("input", save);
   $("narrVoice").addEventListener("change", save);
   $("narr-on").addEventListener("change", save);
-  $("narrPlay").onclick = speakNow;
+  $("narrVoice").addEventListener("change", showNarrNote);
+  $("narrPlay").onclick = async function () {
+    if (narrBusy || recording) return;
+    narrBusy = true; narrForce = true; useBrowserFallback = false;
+    try { audioInit(); await prepareNarr(); startNarr(0); } finally { narrForce = false; narrBusy = false; }
+  };
+  function animSeconds() { return narrBuf ? Math.max(8, 1.2 + narrBuf.duration / (+$("narrRate").value / 100) + 1.5) : 8; }
 
-  $("animPrev").onclick = function () { if (!recording) { playAnim(8); speakSoon(); } };
-  $("animRec").onclick = function () {
-    if (recording) return;
+  $("animPrev").onclick = async function () {
+    if (recording || narrBusy) return;
+    narrBusy = true; useBrowserFallback = false;
+    try { await prepareNarr(); } finally { narrBusy = false; }
+    playAnim(animSeconds()); startNarr(1.2);
+  };
+  $("animRec").onclick = async function () {
+    if (recording || narrBusy) return;
     if (!(cv.captureStream && window.MediaRecorder)) { $("msg").textContent = "この端末のブラウザは動画の書き出しに対応していません。"; return; }
-    var types = ["video/mp4;codecs=avc1", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"], mime = "";
+    narrBusy = true; useBrowserFallback = false;
+    try { await prepareNarr(); } finally { narrBusy = false; }
+    var dur = animSeconds();
+    var types = ["video/mp4;codecs=avc1,mp4a.40.2", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/mp4;codecs=avc1", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"], mime = "";
     types.some(function (m) { if (MediaRecorder.isTypeSupported(m)) { mime = m; return true; } return false; });
-    var chunks = [], rec;
-    try { rec = new MediaRecorder(cv.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 6000000 } : {}); }
+    var chunks = [], rec, stream = cv.captureStream(30);
+    if (narrBuf && mdest) mdest.stream.getAudioTracks().forEach(function (tr) { stream.addTrack(tr); });
+    try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6000000 } : {}); }
     catch (e) { $("msg").textContent = "動画の書き出しを開始できませんでした。"; return; }
-    recording = true; $("animRec").textContent = "録画中…"; $("msg").textContent = "録画中です。8秒お待ちください。";
+    recording = true; $("animRec").textContent = "録画中…"; $("msg").textContent = "録画中です。" + Math.round(dur) + "秒お待ちください。";
     rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
     rec.onstop = function () {
-      recording = false; $("animRec").textContent = "動画で保存(8秒)";
+      recording = false; $("animRec").textContent = "動画で保存";
       var type = rec.mimeType || mime || "video/webm", blob = new Blob(chunks, { type: type });
       var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
       a.download = "news." + (type.indexOf("mp4") >= 0 ? "mp4" : "webm");
@@ -1406,8 +1520,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       $("msg").textContent = "動画を保存しました。共有ボタンからSNSに送れます。";
     };
     rec.start();
-    playAnim(8, function () { setTimeout(function () { rec.stop(); }, 150); });
-    speakSoon();
+    playAnim(dur, function () { setTimeout(function () { rec.stop(); }, 150); });
+    startNarr(1.2);
   };
   $("toggleFields").onclick = function () {
     var c = $("fieldsSheet").classList.toggle("collapsed");
@@ -1670,7 +1784,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         $("narr").value = saved.narr.text || ""; $("narrRate").value = saved.narr.rate || 100;
         $("narrRateO").textContent = (+$("narrRate").value / 100).toFixed(1);
         $("narr-on").checked = saved.narr.on !== false;
-        if (saved.narr.voice) { var sv2 = document.createElement("option"); sv2.value = sv2.textContent = saved.narr.voice; $("narrVoice").appendChild(sv2); $("narrVoice").value = saved.narr.voice; }
+        if (saved.narr.voice && $("narrVoice").querySelector('option[value="' + String(saved.narr.voice).replace(/"/g, "") + '"]')) { $("narrVoice").value = saved.narr.voice; showNarrNote(); }
       }
       if (typeof saved.tv === "boolean") { tvfx.on = saved.tv; $("tv-on").checked = saved.tv; }
       if (saved.cur && F[saved.cur]) startFrame = saved.cur;
