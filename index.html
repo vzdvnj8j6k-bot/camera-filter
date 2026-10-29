@@ -790,7 +790,38 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
   };
 
-  var ORDER = ["news", "newsw", "newsr", "newst", "paper", "cctv", "dual"];
+  /* Split-screen flash layout: main photo left, second photo right, white pill headline (red "tab" + partly red text) at the top right. */
+  F.newsd = { name: "速報・2分割(横長)", size: [1280, 720], fields: { name: "右下のロゴ", tag: "赤いタブ", headline: "見出し(前半・黒)", red: "見出し(強調・赤)", sub: "見出し(後半・黒)" } };
+  F.newsd.draw = function (c, S) {
+    var w = 1280, h = 720, t = S.t;
+    c.save(); c.beginPath(); c.rect(0, 0, 640, h); c.clip(); cover(c, S.main, 0, 0, 640, h); c.restore();
+    c.save(); c.beginPath(); c.rect(640, 0, 640, h); c.clip(); cover(c, S.sub, 640, 0, 640, h); c.restore();
+    c.fillStyle = "#fff"; c.fillRect(638, 0, 4, h);
+    c.textBaseline = "middle"; c.textAlign = "left";
+    var parts = [[t.headline, "#27273a"], [t.red, "#e8431c"], [t.sub, "#27273a"]].filter(function (p) { return p[0]; });
+    var tabw = 0;
+    if (t.tag) { c.font = "900 40px " + SANS; tabw = c.measureText(t.tag).width + 40; }
+    var size = 52;
+    function totalW() { c.font = "900 " + size + "px " + SANS; return parts.reduce(function (a, p) { return a + c.measureText(p[0]).width; }, 0); }
+    while (size > 24 && totalW() > 860 - tabw) size -= 2;
+    var pw = tabw + totalW() + 44, px = w - 16 - pw, py = 22, ph = 76;
+    c.save(); c.shadowColor = "rgba(255,80,140,.55)"; c.shadowBlur = 18; c.fillStyle = "#fff"; rr(c, px, py, pw, ph, 14); c.fill(); c.restore();
+    if (t.tag) {
+      var g = c.createLinearGradient(px, 0, px + tabw, 0); g.addColorStop(0, "#e0141e"); g.addColorStop(1, "#ff4d7a");
+      c.fillStyle = g; rr(c, px, py, tabw, ph, 14); c.fill();
+      c.font = "900 40px " + SANS; c.fillStyle = "#fff"; c.fillText(t.tag, px + 20, py + ph / 2 + 1);
+    }
+    var x = px + tabw + 22; c.font = "900 " + size + "px " + SANS;
+    parts.forEach(function (p) { c.fillStyle = p[1]; c.fillText(p[0], x, py + ph / 2 + 2); x += c.measureText(p[0]).width; });
+    if (t.name) {
+      c.font = "700 24px " + SANS;
+      var lw = c.measureText(t.name).width + 24;
+      c.fillStyle = "rgba(0,0,0,.45)"; rr(c, w - 16 - lw, h - 52, lw, 34, 4); c.fill();
+      c.fillStyle = "#fff"; c.fillText(t.name, w - 16 - lw + 12, h - 34);
+    }
+  };
+
+  var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "dual"];
   var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue"];
 
   /* ---------- state ---------- */
@@ -799,6 +830,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し", sub: "友人に見せるなどした疑い" },
+    newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定" },
     led: { headline: "ようこそ 東京へ" },
     shibuya: { name: "SHIBUYA" },
     times: { name: "TOKYO", headline: "あなた", sub: "THE NEW PHOTO / THE GREATEST ME" },
@@ -814,7 +846,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     news: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
-    newst: ["name", "tag", "place", "time", "headline"]
+    newst: ["name", "tag", "place", "time", "headline"],
+    newsd: ["tag", "headline"]
   };
   function placeholder(k) { return "　　　" + new Array(FIELD_KEYS.indexOf(k) + 2).join("​"); }
   function S(id) {
@@ -951,20 +984,20 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     closeEditor();
     $("opt-led").hidden = id !== "led";
     $("opt-dual").hidden = id !== "dual";
-    $("subPasteBox").style.display = id === "dual" ? "" : "none";
+    $("subPasteBox").style.display = (id === "dual" || id === "newsd") ? "" : "none";
     $("r-scroll-on").hidden = !isNewsFrame(id);
     if (isNewsFrame(id)) {
       opts.scrollOn = false;
       $("scroll-on").checked = false;
     }
     startTicker();
-    var dual = id === "dual";
-    $("dropSub").classList.toggle("off", !dual);
-    $("swap").classList.toggle("off", !dual);
+    var dual = id === "dual", two = dual || id === "newsd";
+    $("dropSub").classList.toggle("off", !two);
+    $("swap").classList.toggle("off", !two);
     $("hint").textContent = dual ? "小さい写真をタップで入れ替え" : "タップして文字を変更";
     $("hint").hidden = false; clearTimeout(hintTimer);
     hintTimer = setTimeout(function () { $("hint").hidden = true; }, 2600);
-    $("mainLabel").textContent = dual ? "メイン" : "写真";
+    $("mainLabel").textContent = two ? "メイン" : "写真";
     render(); save();
   }
 
@@ -1339,7 +1372,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         if (!f) continue;
         e.preventDefault();
         var focusedSub = document.activeElement && document.activeElement.id === "subPasteBox";
-        var which = focusedSub ? "sub" : (state.cur === "dual" && have.main && !have.sub ? "sub" : "main");
+        var which = focusedSub ? "sub" : ((state.cur === "dual" || state.cur === "newsd") && have.main && !have.sub ? "sub" : "main");
         load(f, which);
         $("pasteBox").value = ""; $("subPasteBox").value = "";
         $("msg").textContent = which === "sub" ? "自撮りに貼り付けました。" : "写真を貼り付けました。";
