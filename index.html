@@ -220,6 +220,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       <button type="button" id="animShare" style="grid-column: 1 / -1" disabled>動画をSNSなどに共有（録画後に使えます）</button>
     </div>
     <label class="check"><input type="checkbox" id="narr-on" checked>「動きをプレビュー」「動画で保存」に合わせて読み上げる</label>
+    <label class="check"><input type="checkbox" id="credit-on" checked>動画の右下に音声のクレジット（VOICEVOX:声の名前）を入れる</label>
     <textarea id="narr" rows="3" placeholder="読み上げる原稿（空欄なら画面の文字から自動で作ります）" aria-label="読み上げ原稿"></textarea>
     <label class="row" for="narrRate" style="grid-template-columns: 5.5em minmax(0, 1fr) 3em">速さ<input type="range" id="narrRate" min="70" max="140" value="100"><output id="narrRateO">1.0</output></label>
     <label class="field"><span>声</span><select id="narrVoice" aria-label="読み上げの声"></select></label>
@@ -906,7 +907,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   }
 
   /* TV look + animation */
-  var animSec, tvfx = { on: true }, TV_FRAMES = ["news", "newsw", "newsr", "newst", "newsd"];
+  var animSec, creditText = "", tvfx = { on: true }, TV_FRAMES = ["news", "newsw", "newsr", "newst", "newsd"];
   function ease(x) { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); }
   function isTVFrame(id) { return TV_FRAMES.indexOf(id) >= 0; }
   var tvBuf = document.createElement("canvas"), tvBufCtx = tvBuf.getContext("2d"), noisePat = null;
@@ -977,6 +978,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       drawScrollingTicker(ctx, sz[0], sz[1]);
     }
     if (tvfx.on && isTVFrame(id)) applyTV(ctx, cv.width, cv.height, animSec === undefined ? 0 : Math.floor(animSec * 30) + 1);
+    if (creditText && animSec !== undefined && $("credit-on").checked) {
+      ctx.save(); ctx.font = "500 " + Math.round(cv.height * 0.026) + "px " + SANS; ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
+      ctx.shadowColor = "rgba(0,0,0,.7)"; ctx.shadowBlur = 4; ctx.fillStyle = "rgba(255,255,255,.85)";
+      ctx.fillText(creditText, cv.width - 16, cv.height - 14); ctx.restore();
+    }
     syncMini();
   }
 
@@ -1315,10 +1321,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   });
   /* animation preview and video recording */
   var animRAF = null, recording = false, lastVideo = null;
-  function shareFile(blob, name, type, done) {
+  function shareFile(blob, name, type, done, text) {
     var file = new File([blob], name, { type: type });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: "フレーム劇場" }).then(function () { done("共有しました。"); }, function (e) { done(e && e.name === "AbortError" ? "" : "共有できませんでした。"); });
+      var data = { files: [file], title: "フレーム劇場" };
+      if (text) data.text = text;
+      navigator.share(data).then(function () { done("共有しました。"); }, function (e) { done(e && e.name === "AbortError" ? "" : "共有できませんでした。"); });
       return;
     }
     var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
@@ -1332,7 +1340,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }, "image/png");
   };
   $("animShare").onclick = function () {
-    if (lastVideo) shareFile(lastVideo.blob, lastVideo.name, lastVideo.type, function (m) { $("msg").textContent = m; });
+    if (lastVideo) shareFile(lastVideo.blob, lastVideo.name, lastVideo.type, function (m) { $("msg").textContent = m; }, lastVideo.credit);
   };
   function playAnim(seconds, done) {
     cancelAnimationFrame(animRAF); closeEditor();
@@ -1434,12 +1442,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     return 0.3;
   }
   /* one request per sentence, with a pause after each, so the delivery has breaks like a newsreader */
-  async function vvBuffer(text, speaker) {
+  async function vvBuffer(text, speaker, onProg) {
     var parts = [], gaps = [], i, total = 0, chunks = splitNarr(text), sr = actx.sampleRate;
+    if (onProg) onProg(0, chunks.length);
     for (i = 0; i < chunks.length; i++) {
       var b = await vvChunk(chunks[i], speaker), g = Math.round(sr * pauseAfter(chunks[i]));
       if (i === chunks.length - 1) g = Math.round(sr * 0.2);
       parts.push(b); gaps.push(g); total += b.length + g;
+      if (onProg) onProg(i + 1, chunks.length);
       if (i < chunks.length - 1) await sleep(600);
     }
     var out = actx.createBuffer(1, Math.max(1, total), sr), data = out.getChannelData(0), pos = 0;
@@ -1472,8 +1482,15 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (!$("narr-on").checked && !narrForce) return;
     var v = $("narrVoice").value, text = narrText();
     if (!text || v.indexOf("vv:") !== 0) return;
-    $("msg").textContent = "音声を準備中です…";
-    try { audioInit(); narrBuf = await vvBuffer(text, v.slice(3)); $("msg").textContent = ""; }
+    creditText = "";
+    try {
+      audioInit();
+      narrBuf = await vvBuffer(text, v.slice(3), function (k, n) {
+        $("msg").textContent = "音声を準備中です（" + k + "/" + n + "）。" + (k === 0 ? "初回は十数秒かかります。同じ原稿の2回目からは早くなります。" : "");
+      });
+      creditText = "音声：VOICEVOX:" + vvName(v.slice(3));
+      $("msg").textContent = "";
+    }
     catch (e) { console.warn("narration fetch failed", e); narrBuf = null; $("msg").textContent = "自然な声を取得できなかったため、ブラウザ内蔵の声を使います。"; useBrowserFallback = true; }
   }
   var narrForce = false, useBrowserFallback = false;
@@ -1503,33 +1520,83 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     try { await prepareNarr(); } finally { narrBusy = false; }
     playAnim(animSeconds()); startNarr(1.2);
   };
+  function finishVideo(blob, type, note) {
+    recording = false; $("animRec").textContent = "動画で保存";
+    if (!blob || blob.size < 1000) { $("msg").textContent = "動画を書き出せませんでした。もう一度お試しください。"; return; }
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = "news." + (type.indexOf("mp4") >= 0 ? "mp4" : "webm");
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    lastVideo = { blob: blob, type: type, name: a.download, credit: creditText };
+    $("animShare").disabled = false; $("animShare").textContent = "動画をSNSなどに共有";
+    $("msg").textContent = (note || "") + "動画を保存しました。共有ボタンからSNSに送れます。";
+  }
+  /* frame-by-frame MP4 export (WebCodecs + mp4-muxer): not real time, works with the screen off, and carries the narration as AAC audio */
+  async function exportMP4(dur) {
+    var mod = await import("https://cdn.jsdelivr.net/npm/mp4-muxer@5.1.3/build/mp4-muxer.mjs");
+    var w = cv.width, h = cv.height, fps = 30, N = Math.round(dur * fps), sr = 48000, cfgA = null, acodec = null;
+    if (narrBuf && window.AudioEncoder) {
+      cfgA = { codec: "mp4a.40.2", sampleRate: sr, numberOfChannels: 1, bitrate: 128000 };
+      if ((await AudioEncoder.isConfigSupported(cfgA)).supported) acodec = "aac";
+      else { cfgA = { codec: "opus", sampleRate: sr, numberOfChannels: 1, bitrate: 96000 }; if ((await AudioEncoder.isConfigSupported(cfgA)).supported) acodec = "opus"; }
+    }
+    var target = new mod.ArrayBufferTarget();
+    var muxer = new mod.Muxer({ target: target, video: { codec: "avc", width: w, height: h }, audio: acodec ? { codec: acodec, sampleRate: sr, numberOfChannels: 1 } : undefined, fastStart: "in-memory" });
+    var err = null;
+    var venc = new VideoEncoder({ output: function (c, m) { muxer.addVideoChunk(c, m); }, error: function (e) { err = e; } });
+    venc.configure({ codec: "avc1.640028", width: w, height: h, bitrate: 6000000, framerate: fps });
+    cancelAnimationFrame(animRAF); closeEditor();
+    for (var i = 0; i < N; i++) {
+      if (err) throw err;
+      animSec = i / fps; render();
+      var f = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / fps) });
+      venc.encode(f, { keyFrame: i % fps === 0 }); f.close();
+      while (venc.encodeQueueSize > 8) await sleep(4);
+      if (i % 5 === 0) { $("msg").textContent = "動画を書き出し中です… " + Math.round(i / N * 100) + "%"; await sleep(0); }
+    }
+    animSec = undefined; render();
+    await venc.flush();
+    if (acodec) {
+      var oac = new OfflineAudioContext(1, Math.ceil(dur * sr), sr), bs = oac.createBufferSource();
+      bs.buffer = narrBuf; bs.playbackRate.value = +$("narrRate").value / 100; bs.connect(oac.destination); bs.start(1.2);
+      var data = (await oac.startRendering()).getChannelData(0);
+      var aenc = new AudioEncoder({ output: function (c, m) { muxer.addAudioChunk(c, m); }, error: function (e) { err = e; } });
+      aenc.configure(cfgA);
+      for (var pos = 0; pos < data.length; pos += 4800) {
+        var part = data.slice(pos, pos + 4800);
+        var ad = new AudioData({ format: "f32-planar", sampleRate: sr, numberOfFrames: part.length, numberOfChannels: 1, timestamp: Math.round(pos / sr * 1e6), data: part });
+        aenc.encode(ad); ad.close();
+      }
+      await aenc.flush();
+    }
+    if (err) throw err;
+    muxer.finalize();
+    return { blob: new Blob([target.buffer], { type: "video/mp4" }), audio: !!acodec };
+  }
   $("animRec").onclick = async function () {
     if (recording || narrBusy) return;
-    if (!(cv.captureStream && window.MediaRecorder)) { $("msg").textContent = "この端末のブラウザは動画の書き出しに対応していません。"; return; }
     narrBusy = true; useBrowserFallback = false;
     try { await prepareNarr(); } finally { narrBusy = false; }
     var dur = animSeconds();
-    var types = ["video/mp4;codecs=avc1,mp4a.40.2", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/mp4;codecs=avc1", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"], mime = "";
+    recording = true; $("animRec").textContent = "書き出し中…";
+    if (window.VideoEncoder && window.VideoFrame) {
+      try {
+        var res = await exportMP4(dur);
+        finishVideo(res.blob, "video/mp4", narrBuf && !res.audio ? "この端末は音声の書き出しに対応していないため、映像だけです。" : "");
+        return;
+      } catch (e) { console.warn("mp4 export failed", e); animSec = undefined; render(); }
+    }
+    /* fallback: real-time recording of the canvas (video only, so the file is never empty) */
+    if (!(cv.captureStream && window.MediaRecorder)) { recording = false; $("animRec").textContent = "動画で保存"; $("msg").textContent = "この端末のブラウザは動画の書き出しに対応していません。"; return; }
+    var types = ["video/mp4;codecs=avc1", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"], mime = "";
     types.some(function (m) { if (MediaRecorder.isTypeSupported(m)) { mime = m; return true; } return false; });
-    var chunks = [], rec, stream = cv.captureStream(30);
-    if (narrBuf && mdest) mdest.stream.getAudioTracks().forEach(function (tr) { stream.addTrack(tr); });
-    try { rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6000000 } : {}); }
-    catch (e) { $("msg").textContent = "動画の書き出しを開始できませんでした。"; return; }
-    recording = true; $("animRec").textContent = "録画中…"; $("msg").textContent = "録画中です。" + Math.round(dur) + "秒お待ちください。";
+    var chunks = [], rec;
+    try { rec = new MediaRecorder(cv.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 6000000 } : {}); }
+    catch (e) { recording = false; $("animRec").textContent = "動画で保存"; $("msg").textContent = "動画の書き出しを開始できませんでした。"; return; }
+    $("msg").textContent = "録画中です。" + Math.round(dur) + "秒お待ちください。";
     rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-    rec.onstop = function () {
-      recording = false; $("animRec").textContent = "動画で保存";
-      var type = rec.mimeType || mime || "video/webm", blob = new Blob(chunks, { type: type });
-      var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-      a.download = "news." + (type.indexOf("mp4") >= 0 ? "mp4" : "webm");
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      lastVideo = { blob: blob, type: type, name: a.download };
-      $("animShare").disabled = false; $("animShare").textContent = "動画をSNSなどに共有";
-      $("msg").textContent = "動画を保存しました。共有ボタンからSNSに送れます。";
-    };
-    rec.start();
+    rec.onstop = function () { finishVideo(new Blob(chunks, { type: rec.mimeType || mime || "video/webm" }), rec.mimeType || mime || "video/webm", narrBuf ? "この端末では音声を入れられないため、映像だけです。" : ""); };
+    rec.start(1000);
     playAnim(dur, function () { setTimeout(function () { rec.stop(); }, 150); });
-    startNarr(1.2);
   };
   $("toggleFields").onclick = function () {
     var c = $("fieldsSheet").classList.toggle("collapsed");
