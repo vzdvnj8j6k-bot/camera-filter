@@ -808,7 +808,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   };
 
   /* Arrest-report layout: white headline panel with blue top bar (top right), white name plate with a small note beside it, two-line black caption box (bottom left). */
-  F.newst = { name: "逮捕報道(横長)", size: [1280, 720], fields: { name: "左上の局名", tag: "右上の見出し(1行目)", place: "右上の見出し(2行目)", red: "右上の赤文字", blue: "右上の青文字", time: "名前", suf: "名前の後ろ", ticker: "名前の横の小さな文字", headline: "黒い囲み(自動で折り返し)" } };
+  F.newst = { name: "逮捕報道(横長)", size: [1280, 720], fields: { name: "左上の局名", tag: "右上の見出し(1行目)", place: "右上の見出し(2行目)", red: "右上の赤文字", blue: "右上の青文字", time: "名前", suf: "名前の後ろ", ticker: "名前の横の小さな文字", headline: "黒い囲み(改行できます)" } };
   F.newst.draw = function (c, S) {
     var w = 1280, h = 720, t = S.t, i, a = S.a;
     var zoom = a === undefined ? 1 : 1 + 0.045 * Math.min(1, a / 8);
@@ -852,18 +852,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       });
     }
 
-    c.font = "700 52px " + SANS;
-    var lines2 = [], cur2;
-    richLines(t.headline).forEach(function (par) {
-      cur2 = [];
-      par.forEach(function (rc) {
-        if (cur2.length && c.measureText(charsText(cur2) + rc.ch).width > 880) { lines2.push(cur2); cur2 = [rc]; } else cur2.push(rc);
-      });
-      if (cur2.length) lines2.push(cur2);
-    });
+    /* no automatic wrapping: a line only breaks where the writer put a line break; a long line is shrunk to fit */
+    var lines2 = richLines(t.headline).filter(function (arr) { return arr.length; });
+    var fsz = 52;
+    lines2.forEach(function (arr) { fsz = Math.min(fsz, fit(c, charsText(arr), "700", SANS, 52, 1190, 18)); });
+    c.font = "700 " + fsz + "px " + SANS;
     var bottom = h - 34, bh = lines2.length ? 22 + lines2.length * 66 : 0, by = bottom - bh;
     var maxw = 0;
-    lines2.forEach(function (arr) { fit(c, charsText(arr), "700", SANS, 52, 1000, 28); maxw = Math.max(maxw, c.measureText(charsText(arr)).width); });
+    lines2.forEach(function (arr) { maxw = Math.max(maxw, c.measureText(charsText(arr)).width); });
     var bw = maxw + 52;
     var o2 = a === undefined ? 0 : -(1 - ease((a - 1.0) / 0.7)) * (Math.max(bw, 420) + 80);
     if (t.time || t.suf) {
@@ -884,7 +880,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       c.fillStyle = "rgba(0,0,0,.86)"; rr(c, 30 + o2, by, bw, bh, 5); c.fill();
       c.restore();
       c.textAlign = "left"; c.fillStyle = "#fff";
-      lines2.forEach(function (arr, k) { fit(c, charsText(arr), "700", SANS, 52, 1000, 28); drawRich(c, arr, 56 + o2, by + 11 + 33 + k * 66, "#fff", false); });
+      c.font = "700 " + fsz + "px " + SANS;
+      lines2.forEach(function (arr, k) { drawRich(c, arr, 56 + o2, by + 11 + 33 + k * 66, "#fff", false); });
     }
   };
 
@@ -930,7 +927,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     news: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
-    newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し友人に見せるなどした疑い" },
+    newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
     newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定", time: "あなた", suf: "容疑者(19)", time2: "友人", suf2: "容疑者(20)" },
     led: { headline: "ようこそ 東京へ" },
     shibuya: { name: "SHIBUYA" },
