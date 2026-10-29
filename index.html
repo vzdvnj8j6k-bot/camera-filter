@@ -918,7 +918,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (F[state.cur].draw === F.dual.draw) render();
   }
   function schedThumbs() { clearTimeout(thumbTimer); thumbTimer = setTimeout(drawThumbs, 300); }
-  function redraw() { render(); schedThumbs(); }
+  function redraw() { render(); schedThumbs(); save(); }
 
   /* picker */
   var picker = $("picker");
@@ -965,7 +965,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     $("hint").hidden = false; clearTimeout(hintTimer);
     hintTimer = setTimeout(function () { $("hint").hidden = true; }, 2600);
     $("mainLabel").textContent = dual ? "メイン" : "写真";
-    render();
+    render(); save();
   }
 
   FIELD_KEYS.forEach(function (k) {
@@ -1058,6 +1058,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var url = URL.createObjectURL(file), img = new Image();
     img.onload = function () {
       state[which] = img; have[which] = true; setThumb(which, url); $("sampleNote").hidden = true;
+      blobs[which] = file; saveBlob(which, file);
       if (which === "main") cutChanged();
       redraw();
     };
@@ -1072,6 +1073,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   function swap() {
     var t = state.main; state.main = state.sub; state.sub = t;
     var hv = have.main; have.main = have.sub; have.sub = hv;
+    var bt = blobs.main; blobs.main = blobs.sub; blobs.sub = bt; saveBlob("main", blobs.main); saveBlob("sub", blobs.sub);
     cutChanged();
     var bm = $("thumbMain").style.backgroundImage, bs = $("thumbSub").style.backgroundImage;
     $("thumbMain").style.backgroundImage = bs; $("thumbSub").style.backgroundImage = bm;
@@ -1207,6 +1209,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     state.main = sample("main"); state.sub = sample("sub");
     setThumb("main", ""); setThumb("sub", "");
     have.main = false; have.sub = false;
+    blobs.main = null; blobs.sub = null; saveBlob("main", null); saveBlob("sub", null);
     cutReset();
     $("sampleNote").hidden = false; redraw();
   };
@@ -1385,7 +1388,80 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }, "image/png");
   };
 
-  choose("news");
+  /* persistence: texts, colors, settings in localStorage; photos in IndexedDB, so a reload keeps the work */
+  var STORE_KEY = "dualshot.v1", defaults = JSON.parse(JSON.stringify(texts)), saveTimer = null, blobs = { main: null, sub: null };
+  function save() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); }
+  function saveNow() {
+    try {
+      var diff = {};
+      Object.keys(texts).forEach(function (id) {
+        Object.keys(texts[id]).forEach(function (k) {
+          var v = texts[id][k];
+          if (typeof v === "string" && v !== (defaults[id] || {})[k]) { (diff[id] = diff[id] || {})[k] = v; }
+        });
+      });
+      localStorage.setItem(STORE_KEY, JSON.stringify({ cur: state.cur, texts: diff, colors: colors, led: opts.led, dual: opts.dual, scrollOn: opts.scrollOn, view: view }));
+    } catch (e) {}
+  }
+  function idb(cb) {
+    try {
+      var r = indexedDB.open("dualshot", 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore("img"); };
+      r.onsuccess = function () { cb(r.result); };
+    } catch (e) {}
+  }
+  function saveBlob(which, blob) {
+    idb(function (db) {
+      try { var os = db.transaction("img", "readwrite").objectStore("img"); if (blob) os.put(blob, which); else os["delete"](which); } catch (e) {}
+    });
+  }
+  function restoreImage(blob, which) {
+    var url = URL.createObjectURL(blob), img = new Image();
+    img.onload = function () {
+      if (have[which]) return;
+      state[which] = img; have[which] = true; blobs[which] = blob; setThumb(which, url); $("sampleNote").hidden = true;
+      if (which === "main") cutChanged();
+      redraw();
+    };
+    img.src = url;
+  }
+  function restoreBlobs() {
+    idb(function (db) {
+      ["main", "sub"].forEach(function (which) {
+        try { var q = db.transaction("img").objectStore("img").get(which); q.onsuccess = function () { if (q.result) restoreImage(q.result, which); }; } catch (e) {}
+      });
+    });
+  }
+  function setSeg(sel, attr, val) {
+    Array.prototype.forEach.call(document.querySelectorAll(sel + " button"), function (b) { b.setAttribute("aria-pressed", b.getAttribute(attr) === val ? "true" : "false"); });
+  }
+  var saved = null, startFrame = "news";
+  try { saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null"); } catch (e) {}
+  if (saved) {
+    try {
+      Object.keys(saved.texts || {}).forEach(function (id) {
+        if (!texts[id]) return;
+        Object.keys(saved.texts[id]).forEach(function (k) { if (typeof saved.texts[id][k] === "string") texts[id][k] = saved.texts[id][k]; });
+      });
+      if (saved.colors) colors = saved.colors;
+      if (saved.led) { opts.led = saved.led; setSeg("#ledSeg", "data-led", opts.led); }
+      if (saved.dual) {
+        Object.keys(opts.dual).forEach(function (k) { if (k in saved.dual) opts.dual[k] = saved.dual[k]; });
+        setSeg("#posSeg", "data-pos", opts.dual.pos);
+        ["size", "border", "radius"].forEach(function (k) { $("o-" + k).value = opts.dual[k]; $("o-" + k).dispatchEvent(new Event("input")); });
+        $("o-late").checked = !!opts.dual.late; $("o-flat").checked = !!opts.dual.flat;
+      }
+      if (saved.view) {
+        view.fx = saved.view.fx; view.fy = saved.view.fy; view.contain = !!saved.view.contain;
+        $("v-contain").checked = view.contain; $("v-y").value = Math.round(view.fy * 100); $("v-x").value = Math.round(view.fx * 100);
+        updView();
+      }
+      if (saved.cur && F[saved.cur]) startFrame = saved.cur;
+    } catch (e) {}
+  }
+  choose(startFrame);
+  if (saved && saved.scrollOn === true && isNewsFrame(startFrame)) { opts.scrollOn = true; $("scroll-on").checked = true; }
+  restoreBlobs();
   startTicker();
   drawThumbs();
   if (document.fonts && document.fonts.load) {
