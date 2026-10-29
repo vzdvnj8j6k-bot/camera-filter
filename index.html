@@ -129,6 +129,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
   position: absolute; z-index: 7; pointer-events: none; border: 3px solid #ffd000; border-radius: 8px;
   box-shadow: 0 0 0 2px rgba(0,0,0,.55); animation: hlp 0.9s ease-in-out infinite alternate;
 }
+.sh-badge { position: absolute; left: 12px; top: 12px; z-index: 6; background: rgba(255, 208, 0, .96); color: #111; border: 0; border-radius: 999px; padding: 8px 14px; font-family: var(--font-body); font-size: 0.76rem; font-weight: 700; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.5); }
 @keyframes hlp { from { opacity: 1; } to { opacity: .35; } }
 .edit-panel {
   position: fixed; left: 0; right: 0; z-index: 30; background: #1c1c1e; border-top: 1px solid #3a3a3c;
@@ -185,6 +186,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 
   <div class="shot">
     <canvas id="cv" width="1080" height="1440" role="img" aria-label="選んだ枠を重ねた写真のプレビュー"></canvas>
+    <button type="button" class="sh-badge" id="shBadge" hidden>顔を加工中（タップで解除）</button>
     <div class="hint" id="hint" hidden>小さい写真をタップで入れ替え</div>
   </div>
 
@@ -1064,6 +1066,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     regions = []; ctx.fillText = recordText; ctx.strokeText = strokeHook;
     try { F[id].draw(ctx, S(id)); } finally { delete ctx.fillText; delete ctx.strokeText; }
     resolveRegionKeys();
+    var badgeOn = !!(shaped.on && shaped.canvas && shaped.src === state.main);
+    if ($("shBadge").hidden === badgeOn) $("shBadge").hidden = !badgeOn;
     if (opts.scrollOn && isNewsFrame(id)) {
       var sz = F[id].size || [W, H];
       drawScrollingTicker(ctx, sz[0], sz[1]);
@@ -2232,6 +2236,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (shaped.on) shapeRun(); else { shapeSeq++; shaped.canvas = null; shaped.src = null; setShapeMsg("写真を選んでから、チェックを入れてください。"); redraw(); }
     save();
   });
+  $("shBadge").onclick = function () { $("sh-on").checked = false; $("sh-on").dispatchEvent(new Event("change")); };
   SHAPE_KEYS.forEach(function (k) {
     $("sh-" + k).addEventListener("input", function () {
       shaped.vals[k] = +$("sh-" + k).value; $("sh-" + k + "O").textContent = $("sh-" + k).value;
