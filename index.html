@@ -461,9 +461,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   function drawHeadLines(c, lines, x, cy, maxW, size, lead) {
     var n = lines.length, sz = n > 1 ? Math.round(size * 0.86) : size, fs = sz;
     var base = c.fillStyle;
-    lines.forEach(function (l) { fs = Math.min(fs, fit(c, charsText(l), "900", SANS, sz, maxW, 20)); });
-    c.font = "900 " + fs + "px " + SANS;
-    lines.forEach(function (l, k) { drawRich(c, l, x, cy + (k - (n - 1) / 2) * lead, base, true); });
+    lines.forEach(function (l) { fs = Math.min(fs, fit(c, charsText(l), "700", SANS, sz, maxW, 20)); });
+    c.font = "700 " + fs + "px " + SANS;
+    lines.forEach(function (l, k) { drawRich(c, l, x, cy + (k - (n - 1) / 2) * lead, base, false); });
   }
   function splitSuf(s) {
     var i = s.search(/[(（]/);
