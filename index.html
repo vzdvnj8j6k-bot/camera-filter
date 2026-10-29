@@ -245,6 +245,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       <button type="button" data-p="male">モデル風（男性）</button>
       <button type="button" data-p="plastic">整形顔</button>
       <button type="button" data-p="over">整形しすぎ</button>
+      <button type="button" data-p="chubby">ふっくら</button>
+      <button type="button" data-p="heavy">太る（強）</button>
     </div>
     <label class="row" for="sh-eyes" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">目を大きく<input type="range" id="sh-eyes" min="0" max="100" value="35"><output id="sh-eyesO">35</output></label>
     <label class="row" for="sh-jaw" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">あごをシャープに<input type="range" id="sh-jaw" min="0" max="100" value="40"><output id="sh-jawO">40</output></label>
@@ -255,6 +257,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <label class="row" for="sh-bright" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">肌を白く<input type="range" id="sh-bright" min="0" max="100" value="20"><output id="sh-brightO">20</output></label>
     <label class="row" for="sh-gloss" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">つや（ハイライト）<input type="range" id="sh-gloss" min="0" max="100" value="0"><output id="sh-glossO">0</output></label>
     <label class="row" for="sh-makeup" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">メイク（まつげ・チーク）<input type="range" id="sh-makeup" min="0" max="100" value="0"><output id="sh-makeupO">0</output></label>
+    <label class="row" for="sh-fat" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">顔をふっくら<input type="range" id="sh-fat" min="0" max="100" value="0"><output id="sh-fatO">0</output></label>
+    <label class="row" for="sh-body" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">体を太く<input type="range" id="sh-body" min="0" max="100" value="0"><output id="sh-bodyO">0</output></label>
     <p class="small" id="sh-msg">写真を選んでから、チェックを入れてください。顔を見つけるAIは端末内で動き、写真は送信されません（初回だけ、AIの部品をダウンロードします）。</p>
   </div>
 
@@ -344,14 +348,16 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   /* How the user's own photos are placed in a frame: crop position, or fit whole with a blurred fill. */
   var view = { fx: 0.5, fy: 0.4, contain: true };
   /* face-reshape filter: the warped copy of the main photo (valid while shaped.src is still the main photo) */
-  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0 } };
-  var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup"];
+  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0, fat: 0, body: 0 } };
+  var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup", "fat", "body"];
   var SHAPE_PRESETS = {
     natural: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0 },
     model: { eyes: 55, jaw: 55, face: 25, nose: 55, lips: 30, skin: 70, bright: 55, gloss: 35, makeup: 75 },
     male: { eyes: 40, jaw: 70, face: 35, nose: 55, lips: 5, skin: 70, bright: 45, gloss: 25, makeup: 20 },
     plastic: { eyes: 75, jaw: 80, face: 40, nose: 80, lips: 25, skin: 85, bright: 45, gloss: 40, makeup: 35 },
-    over: { eyes: 100, jaw: 100, face: 65, nose: 100, lips: 50, skin: 100, bright: 70, gloss: 75, makeup: 60 }
+    over: { eyes: 100, jaw: 100, face: 65, nose: 100, lips: 50, skin: 100, bright: 70, gloss: 75, makeup: 60 },
+    chubby: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 15, bright: 0, gloss: 0, makeup: 0, fat: 55, body: 45 },
+    heavy: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 15, bright: 0, gloss: 0, makeup: 0, fat: 75, body: 90 }
   };
   function cover(c, img, x, y, w, h) {
     var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
@@ -2005,25 +2011,53 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       if (l > 0) {
         var a1 = P(13), b1 = P(14); H.push({ x: (a1.x + b1.x) / 2, y: (a1.y + b1.y) / 2, r: dist(P(61), P(291)) * 0.9, s: 0.45 * l });
       }
+      /* fatten: puffier cheeks and a wider face, a heavier jaw and double chin, a thicker neck, narrower eyes, and (body) wider shoulders and chest.
+         These handles are "free": they may push content outward past the face area. sx = horizontal-only bulge; rx/ry = elliptical area */
+      var ft = (v.fat || 0) / 100, bdv = (v.body || 0) / 100, chin = P(152);
+      if (ft > 0) {
+        var cheekY = ((P(33).y + P(263).y) / 2 + P(13).y) / 2;
+        H.push({ free: true, x: fc.x, y: cheekY, rx: fw * 1.0, ry: fw * 1.05, sx: 0.5 * ft });
+        [205, 425].forEach(function (i) { var p = P(i); H.push({ free: true, x: p.x, y: p.y, r: fw * 0.36, s: 0.26 * ft }); });
+        [[234, 93, 132, 58, 172, 136, 150, 149, 176, 148], [454, 323, 361, 288, 397, 365, 379, 378, 400, 377]].forEach(function (arr) {
+          arr.forEach(function (i, k) {
+            var p = P(i), fct = 0.4 + 0.6 * (k / (arr.length - 1)), vx = p.x - fc.x, vy = p.y - fc.y, vl = Math.hypot(vx, vy) || 1, mag = fw * 0.065 * ft * fct;
+            H.push({ free: true, x: p.x, y: p.y, r: fw * 0.26, dx: vx / vl * mag, dy: vy / vl * mag * 0.4 });
+          });
+        });
+        H.push({ free: true, x: chin.x, y: chin.y, r: fw * 0.3, dx: 0, dy: fw * 0.08 * ft });
+        H.push({ free: true, x: chin.x, y: chin.y + fw * 0.2, r: fw * 0.34, s: 0.36 * ft });
+        H.push({ free: true, x: chin.x, y: chin.y + fw * 0.7, rx: fw * 0.85, ry: fw * 0.55, sx: 0.4 * ft });
+        [[468, 33, 133], [473, 362, 263]].forEach(function (a) {
+          var c = lm[a[0]] ? P(a[0]) : { x: (P(a[1]).x + P(a[2]).x) / 2, y: (P(a[1]).y + P(a[2]).y) / 2 };
+          H.push({ free: true, x: c.x, y: c.y, r: dist(P(a[1]), P(a[2])) * 1.2, s: -0.14 * ft });
+        });
+      }
+      if (bdv > 0) H.push({ free: true, x: fc.x, y: chin.y + fw * 1.4, rx: fw * 2.1, ry: fw * 1.7, sx: 0.5 * bdv });
       if (!H.length) return;
       var x0 = w, y0 = h, x1 = 0, y1 = 0;
-      H.forEach(function (q) { q.r2 = q.r * q.r; x0 = Math.min(x0, q.x - q.r); y0 = Math.min(y0, q.y - q.r); x1 = Math.max(x1, q.x + q.r); y1 = Math.max(y1, q.y + q.r); });
+      H.forEach(function (q) {
+        var qx = q.rx || q.r, qy = q.ry || q.r; q.r2 = q.r * q.r;
+        x0 = Math.min(x0, q.x - qx); y0 = Math.min(y0, q.y - qy); x1 = Math.max(x1, q.x + qx); y1 = Math.max(y1, q.y + qy);
+      });
       x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(w - 1, Math.ceil(x1)); y1 = Math.min(h - 1, Math.ceil(y1));
       /* the warp only acts inside a slightly enlarged face area, so the background and hair outside it are not dragged along */
       var wm = faceMask(lm, w, h, 1.1, Math.max(2, Math.round(fw * 0.05)), false);
       for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
-        var ax = 0, ay = 0, hit = false;
+        var ax = 0, ay = 0, fxd = 0, fyd = 0, hit = false, hitM = false;
         for (var q = 0; q < H.length; q++) {
-          var hd = H[q], ddx = x - hd.x, ddy = y - hd.y, d2 = ddx * ddx + ddy * ddy;
-          if (d2 >= hd.r2) continue;
-          var t = 1 - d2 / hd.r2, wg = t * t;
-          if (hd.s !== undefined) { ax -= ddx * hd.s * wg; ay -= ddy * hd.s * wg; } else { ax -= hd.dx * wg; ay -= hd.dy * wg; }
+          var hd = H[q], ddx = x - hd.x, ddy = y - hd.y, t, tx, ty;
+          if (hd.rx) { var nx = ddx / hd.rx, ny = ddy / hd.ry, dn = nx * nx + ny * ny; if (dn >= 1) continue; t = 1 - dn; }
+          else { var d2 = ddx * ddx + ddy * ddy; if (d2 >= hd.r2) continue; t = 1 - d2 / hd.r2; }
+          var wg = t * t;
+          if (hd.sx !== undefined) { tx = -ddx * hd.sx * wg; ty = 0; }
+          else if (hd.s !== undefined) { tx = -ddx * hd.s * wg; ty = -ddy * hd.s * wg; }
+          else { tx = -hd.dx * wg; ty = -hd.dy * wg; }
+          if (hd.free) { fxd += tx; fyd += ty; } else { ax += tx; ay += ty; hitM = true; }
           hit = true;
         }
         if (!hit) continue;
-        var mwt = wm[(y * w + x) * 4 + 3] / 255;
-        if (mwt < 0.01) continue;
-        ax *= mwt; ay *= mwt;
+        var mwt = hitM ? wm[(y * w + x) * 4 + 3] / 255 : 0;
+        ax = ax * mwt + fxd; ay = ay * mwt + fyd;
         var sx = Math.min(w - 1.001, Math.max(0, x + ax)), sy = Math.min(h - 1.001, Math.max(0, y + ay));
         var ix = sx | 0, iy = sy | 0, fx = sx - ix, fy = sy - iy, i00 = (iy * w + ix) * 4, i10 = i00 + 4, i01 = i00 + w * 4, i11 = i01 + 4, o = (y * w + x) * 4;
         for (var c2 = 0; c2 < 3; c2++) {
@@ -2207,7 +2241,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   Array.prototype.forEach.call(document.querySelectorAll("#shPresets button"), function (b) {
     b.onclick = function () {
       var p = SHAPE_PRESETS[b.getAttribute("data-p")];
-      SHAPE_KEYS.forEach(function (k) { shaped.vals[k] = p[k]; $("sh-" + k).value = p[k]; $("sh-" + k + "O").textContent = p[k]; });
+      SHAPE_KEYS.forEach(function (k) { var pv = p[k] || 0; shaped.vals[k] = pv; $("sh-" + k).value = pv; $("sh-" + k + "O").textContent = pv; });
       Array.prototype.forEach.call(document.querySelectorAll("#shPresets button"), function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
       if (!shaped.on) { shaped.on = true; $("sh-on").checked = true; }
       shapeRun(); save();
