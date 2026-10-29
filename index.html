@@ -2165,10 +2165,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         H.push({ x: c.x, y: c.y, r: dist(P(a[1]), P(a[2])) * 1.3, s: 0.6 * e + 0.1 * (v.doll || 0) / 100 });
       });
       var vgw = (v.vigor || 0) / 100;
-      if (vgw > 0) [[468, 33, 133, 159, 105], [473, 362, 263, 386, 334]].forEach(function (a) {
-        var c = lm[a[0]] ? P(a[0]) : { x: (P(a[1]).x + P(a[2]).x) / 2, y: (P(a[1]).y + P(a[2]).y) / 2 }, ew = dist(P(a[1]), P(a[2])), up = P(a[3]), br = P(a[4]);
+      if (vgw > 0) [[468, 33, 133, 159, 105, 145], [473, 362, 263, 386, 334, 374]].forEach(function (a) {
+        var c = lm[a[0]] ? P(a[0]) : { x: (P(a[1]).x + P(a[2]).x) / 2, y: (P(a[1]).y + P(a[2]).y) / 2 }, ew = dist(P(a[1]), P(a[2])), up = P(a[3]), br = P(a[4]), lo = P(a[5]);
         H.push({ free: true, x: c.x, y: c.y, r: ew * 1.3, s: 0.34 * vgw });
         H.push({ free: true, x: up.x, y: up.y, r: ew * 0.55, dx: 0, dy: -ew * 0.17 * vgw });
+        H.push({ free: true, x: lo.x, y: lo.y, r: ew * 0.5, dx: 0, dy: ew * 0.15 * vgw });
         H.push({ free: true, x: br.x, y: br.y, r: ew * 0.8, dx: 0, dy: -ew * 0.2 * vgw });
       });
       var trw = (v.tired || 0) / 100;
