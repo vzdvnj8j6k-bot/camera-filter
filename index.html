@@ -743,17 +743,17 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     c.textBaseline = "middle";
 
     if (t.name) {
-      c.font = "900 30px " + SANS;
+      c.font = "700 30px " + SANS;
       var nw = c.measureText(t.name).width + 36;
       c.fillStyle = "rgba(255,255,255,.92)"; rr(c, 28, 24, nw, 48, 6); c.fill();
-      c.fillStyle = "#14234b"; c.textAlign = "left"; fat(c, t.name, 46, 49);
+      c.fillStyle = "#14234b"; c.textAlign = "left"; c.fillText(t.name, 46, 49);
     }
 
     var pl = [[t.tag, "#111"], [t.place, "#111"], [t.red, "#d8101c"], [t.blue, "#1747c8"]].filter(function (p) { return p[0]; });
     var lines = pl.length;
     if (lines) {
       var mw = 0;
-      pl.forEach(function (p) { fit(c, p[0], "900", SANS, 38, 640, 20); mw = Math.max(mw, c.measureText(p[0]).width); });
+      pl.forEach(function (p) { fit(c, p[0], "700", SANS, 38, 640, 20); mw = Math.max(mw, c.measureText(p[0]).width); });
       var pw = mw + 48, px = w - 28 - pw, py = 24, ph = 14 + lines * 54 + 10;
       var bar = c.createLinearGradient(px, 0, px + pw, 0);
       bar.addColorStop(0, "#1a2fa8"); bar.addColorStop(1, "#2fb4ff");
@@ -762,31 +762,31 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 2; c.strokeRect(px, py, pw, ph);
       c.textAlign = "left";
       pl.forEach(function (p, k) {
-        fit(c, p[0], "900", SANS, 38, 640, 20); c.fillStyle = p[1];
-        fat(c, p[0], px + 24, py + 12 + 34 + k * 54);
+        fit(c, p[0], "700", SANS, 38, 640, 20); c.fillStyle = p[1];
+        c.fillText(p[0], px + 24, py + 12 + 34 + k * 54);
       });
     }
 
     var lines2 = [t.headline || "", t.sub || ""].filter(function (s) { return s; });
     var bottom = h - 34, bh = lines2.length ? 22 + lines2.length * 66 : 0, by = bottom - bh;
     var maxw = 0;
-    lines2.forEach(function (s) { fit(c, s, "900", SANS, 52, 1000, 28); maxw = Math.max(maxw, c.measureText(s).width); });
+    lines2.forEach(function (s) { fit(c, s, "700", SANS, 52, 1000, 28); maxw = Math.max(maxw, c.measureText(s).width); });
     var bw = maxw + 52;
     if (t.time || t.suf) {
       var nm = (t.time || "") + (t.suf || "");
-      var ns = fit(c, nm, "900", SANS, 36, 520, 20), nwid = c.measureText(nm).width + 32;
+      var ns = fit(c, nm, "700", SANS, 36, 520, 20), nwid = c.measureText(nm).width + 32;
       var ny = (bh ? by : bottom) - 58;
       c.fillStyle = "rgba(255,255,255,.95)"; rr(c, 30, ny, nwid, 48, 4); c.fill();
-      c.fillStyle = "#d8101c"; c.textAlign = "left"; fat(c, nm, 46, ny + 25);
+      c.fillStyle = "#d8101c"; c.textAlign = "left"; c.fillText(nm, 46, ny + 25);
       if (t.ticker) {
-        fit(c, t.ticker, "900", SANS, 32, 600, 18);
-        outlined(c, t.ticker, 30 + nwid + 18, ny + 25, 7, "#fff");
+        fit(c, t.ticker, "700", SANS, 32, 600, 18);
+        outlined(c, t.ticker, 30 + nwid + 18, ny + 25, 5, "#fff");
       }
     }
     if (bh) {
       c.fillStyle = "rgba(0,0,0,.86)"; rr(c, 30, by, bw, bh, 5); c.fill();
       c.textAlign = "left"; c.fillStyle = "#fff";
-      lines2.forEach(function (s, k) { fit(c, s, "900", SANS, 52, 1000, 28); fat(c, s, 56, by + 11 + 33 + k * 66); });
+      lines2.forEach(function (s, k) { fit(c, s, "700", SANS, 52, 1000, 28); c.fillText(s, 56, by + 11 + 33 + k * 66); });
     }
   };
 
