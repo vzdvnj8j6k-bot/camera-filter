@@ -1025,6 +1025,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var id = state.cur;
     regions = []; ctx.fillText = recordText; ctx.strokeText = strokeHook;
     try { F[id].draw(ctx, S(id)); } finally { delete ctx.fillText; delete ctx.strokeText; }
+    resolveRegionKeys();
     if (opts.scrollOn && isNewsFrame(id)) {
       var sz = F[id].size || [W, H];
       drawScrollingTicker(ctx, sz[0], sz[1]);
@@ -1250,24 +1251,40 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var px = (e.clientX - r.left) / r.width * W, py = (e.clientY - r.top) / r.height * H;
     return px >= insetRect.x && px <= insetRect.x + insetRect.w && py >= insetRect.y && py <= insetRect.y + insetRect.h;
   }
-  function keyForText(s) {
-    var t = texts[state.cur], fl = F[state.cur].fields, loose = null, n, k, v, ph = s.match(/^　　　(​+)/);
-    if (ph) { k = FIELD_KEYS[ph[1].length - 1]; if (k && k in fl) return k; }
-    if (t.time && t.suf && s === plain(t.time) + plain(t.suf) && "time" in fl) return "time";
-    for (n = 0; n < FIELD_KEYS.length; n++) {
-      k = FIELD_KEYS[n]; v = plain(t[k]);
-      if (!(k in fl) || k === "scroll" || !v) continue;
-      if (s === v) return k;
-      if (!loose && v.length >= 2 && (s.indexOf(v) >= 0 || (s.length >= 2 && v.indexOf(s) >= 0 && v.length > s.length))) loose = k;
-    }
-    return loose;
+  /* every field a drawn string could belong to (exact matches win; otherwise any field that contains it) */
+  function candKeys(s) {
+    var t = texts[state.cur], fl = F[state.cur].fields, exact = [], loose = [], ph = s.match(/^　　　(​+)/);
+    if (ph) { var pk = FIELD_KEYS[ph[1].length - 1]; if (pk && pk in fl) return [pk]; }
+    if (t.time && t.suf && s === plain(t.time) + plain(t.suf) && "time" in fl) return ["time"];
+    FIELD_KEYS.forEach(function (k) {
+      var v = plain(t[k]);
+      if (!(k in fl) || k === "scroll" || !v) return;
+      if (s === v) exact.push(k);
+      else if (v.length >= 2 && (s.indexOf(v) >= 0 || (s.length >= 2 && v.indexOf(s) >= 0 && v.length > s.length))) loose.push(k);
+    });
+    return exact.length ? exact : loose;
+  }
+  function keyForText(s) { return candKeys(s)[0] || null; }
+  /* several lines of one field are drawn one after another: when a line fits more than one field, follow its neighbours */
+  function resolveRegionKeys() {
+    regions.forEach(function (r) { r.cands = candKeys(r.text); r.key = r.cands.length === 1 ? r.cands[0] : null; });
+    regions.forEach(function (r, i) {
+      if (r.key || !r.cands.length) return;
+      for (var d = 1; d <= 3 && !r.key; d++) {
+        [-1, 1].forEach(function (sg) {
+          var nb = regions[i + sg * d];
+          if (!r.key && nb && nb.key && r.cands.indexOf(nb.key) >= 0) r.key = nb.key;
+        });
+      }
+      if (!r.key) r.key = r.cands[0];
+    });
   }
   /* editing panel: docked above the keyboard, with a yellow frame around the text being edited on the image */
   var editor = null, hl = null, editKey = null, vv = window.visualViewport;
   function findRegion(k) {
     var u = null;
     regions.forEach(function (r) {
-      if (keyForText(r.text) !== k) return;
+      if (r.key !== k) return;
       if (!u) { u = { x: r.x, y: r.y, w: r.w, h: r.h }; return; }
       var x2 = Math.max(u.x + u.w, r.x + r.w), y2 = Math.max(u.y + u.h, r.y + r.h);
       u.x = Math.min(u.x, r.x); u.y = Math.min(u.y, r.y); u.w = x2 - u.x; u.h = y2 - u.y;
@@ -1458,7 +1475,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     for (n = regions.length - 1; n >= 0; n--) {
       r = regions[n];
       if (px >= r.x - pad && px <= r.x + r.w + pad && py >= r.y - pad && py <= r.y + r.h + pad) {
-        k = keyForText(r.text);
+        k = r.key;
         if (k) { openEditor(k); return; }
       }
     }
