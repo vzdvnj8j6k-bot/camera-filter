@@ -781,7 +781,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   };
 
   /* TV interview lower third: white name plate with a two-line caption, blue headline banner below. */
-  F.intv = { name: "インタビュー(横長)", size: [1280, 720], fields: { name: "名前", tag: "肩書き(1行目)", sub: "肩書き(2行目)", headline: "青い帯の見出し" } };
+  F.intv = { name: "インタビュー(横長)", size: [1280, 720], fields: { name: "名前", tag: "肩書き(改行で2行)", headline: "青い帯の見出し" } };
   /* green TV studio set drawn on a canvas (cached): slanted white slats over lime glass, white pillars, chrome rails, gold globe, glossy floor */
   var studioCv = null;
   function studioBG() {
@@ -858,8 +858,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     c.fillStyle = "#b5b9c1"; c.fillRect(cx, 570, 3, 48);
     cx += 22;
     c.fillStyle = "#2a2d33";
-    if (t.tag) { fit(c, t.tag, "700", SANS, 25, w - cx - 40, 14); c.fillText(t.tag, cx, 580); }
-    if (t.sub) { fit(c, t.sub, "700", SANS, 25, w - cx - 40, 14); c.fillText(t.sub, cx, 609); }
+    var cap = (t.tag || "") + (t.sub ? "\n" + t.sub : ""), cl = cap.split("\n").filter(function (x) { return x.trim(); }).slice(0, 2);
+    cl.forEach(function (ln, i) {
+      fit(c, ln, "700", SANS, 25, w - cx - 40, 14);
+      c.fillText(ln, cx, cl.length === 1 ? 596 : 580 + i * 29);
+    });
 
     // blue headline banner
     var bg = c.createLinearGradient(0, 632, 0, 720);
@@ -1225,7 +1228,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   var texts = {
     news: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
-    intv: { name: "山田 太郎", tag: "1日30分睡眠のショートスリーパー", sub: "短眠メソッドを提供する「サンプル」代表", headline: "1日30分! 超ショートスリーパー生活の実態" },
+    intv: { name: "山田 太郎", tag: "1日30分睡眠のショートスリーパー\n短眠メソッドを提供する「サンプル」代表", headline: "1日30分! 超ショートスリーパー生活の実態" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
     clinic: { headline: "整形顔フィルターを\n使ってみたｗ", place: "9.6万", tag2: "低く評価", when: "718", name: "@フレーム劇場", sub: "#整形顔フィルター #ネタ" },
@@ -1246,7 +1249,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   var KEEP = {
     news: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
-    intv: ["name", "tag", "sub", "headline"],
+    intv: ["name", "tag", "headline"],
     newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newst: ["name", "tag", "place", "time", "headline"],
     newsd: ["tag", "headline", "time", "time2"],
@@ -1774,7 +1777,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
-    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw" || state.cur === "clinic" || state.cur === "sleeper") && k === "headline";
+    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw" || state.cur === "clinic" || state.cur === "sleeper") && k === "headline" || state.cur === "intv" && k === "tag";
     if (rich) {
       /* WYSIWYG: a contenteditable box where coloured text is shown in its colour (the ⟦色:…⟧ markup stays hidden) */
       var ce = document.createElement("div");
