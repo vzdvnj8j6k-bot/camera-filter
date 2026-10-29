@@ -404,6 +404,21 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     c.lineJoin = "round"; c.lineWidth = lw; c.strokeStyle = c.fillStyle;
     c.strokeText(text, x, y); c.fillText(text, x, y);
   }
+  function headLines(s) {
+    var a = String(s || "").split("\n").filter(function (x) { return x.length; });
+    return a.length ? a : [""];
+  }
+  /* draws 1+ headline lines centred on cy; with several lines the font size shrinks so every line fits */
+  function drawHeadLines(c, lines, x, cy, maxW, size, lead) {
+    var n = lines.length, sz = n > 1 ? Math.round(size * 0.86) : size, fs = sz;
+    lines.forEach(function (l) { fs = Math.min(fs, fit(c, l, "900", SANS, sz, maxW, 20)); });
+    c.font = "900 " + fs + "px " + SANS;
+    lines.forEach(function (l, k) { fat(c, l, x, cy + (k - (n - 1) / 2) * lead); });
+  }
+  function splitSuf(s) {
+    var i = s.search(/[(（]/);
+    return i > 0 ? [s.slice(0, i), s.slice(i)] : [s, ""];
+  }
   function outlined(c, text, x, y, lw, fill) {
     c.lineJoin = "round"; c.lineWidth = lw; c.strokeStyle = "#000";
     c.strokeText(text, x, y); c.fillStyle = fill; c.fillText(text, x, y);
@@ -435,14 +450,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (t.name) { fit(c, t.name, "900", SANS, 32, 150, 16); outlined(c, t.name, 96, 168, 8, "#fff"); }
 
     // headline bar
-    c.fillStyle = "rgba(255,255,255,.96)"; c.fillRect(170, 40, 870, 92);
-    c.fillStyle = "#e0141e"; poly(c, [[170, 40], [330, 40], [310, 132], [170, 132]]); c.fill();
-    c.fillRect(170, 132, 870, 5);
-    if (t.tag) { fit(c, t.tag, "900", SANS, 42, 120, 20); c.fillStyle = "#fff"; fat(c, t.tag, 238, 87); }
+    var hl = headLines(t.headline), dy = (hl.length - 1) * 56, bh0 = 92 + dy;
+    c.fillStyle = "rgba(255,255,255,.96)"; c.fillRect(170, 40, 870, bh0);
+    c.fillStyle = "#e0141e"; poly(c, [[170, 40], [330, 40], [310, 40 + bh0], [170, 40 + bh0]]); c.fill();
+    c.fillRect(170, 40 + bh0, 870, 5);
+    if (t.tag) { fit(c, t.tag, "900", SANS, 42, 120, 20); c.fillStyle = "#fff"; fat(c, t.tag, 238, 40 + bh0 / 2 + 1); }
     c.textAlign = "left"; c.fillStyle = "#14234b";
-    fit(c, t.headline || "", "900", SANS, 48, 690, 22);
-    fat(c, t.headline || "", 340, 88);
-    if (t.sub) { fit(c, t.sub, "900", SANS, 42, 700, 20); outlined(c, t.sub, 340, 178, 9, "#ffe14a"); }
+    drawHeadLines(c, hl, 340, 40 + bh0 / 2 + 2, 690, 48, 56);
+    if (t.sub) { fit(c, t.sub, "900", SANS, 42, 700, 20); outlined(c, t.sub, 340, 178 + dy, 9, "#ffe14a"); }
 
     // boxed place on the right
     if (t.place || t.when) {
@@ -484,12 +499,15 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (t.time || t.suf) {
       var fs1 = fit(c, t.time || "", "900", SERIF, 92, 960, 30) || 92;
       var w1 = t.time ? c.measureText(t.time).width : 0;
-      var s1 = Math.round(fs1 * 0.55); c.font = "900 " + s1 + "px " + SERIF;
-      var w2 = t.suf ? c.measureText(t.suf).width : 0;
+      var s1 = Math.round(fs1 * 0.72), s2 = Math.round(fs1 * 0.5), sp = splitSuf(t.suf || "");
+      c.font = "900 " + s1 + "px " + SERIF; var w2a = sp[0] ? c.measureText(sp[0]).width : 0;
+      c.font = "900 " + s2 + "px " + SERIF; var w2b = sp[1] ? c.measureText(sp[1]).width : 0;
+      var w2 = w2a + w2b;
       var sc = Math.min(1, 960 / Math.max(1, w1 + w2)), xs = (W - (w1 + w2) * sc) / 2;
       c.save(); c.translate(xs, 0); c.scale(sc, 1); c.textAlign = "left";
       if (t.time) { c.font = "900 " + fs1 + "px " + SERIF; outlined(c, t.time, 0, 1372, 12, "#fff"); }
-      if (t.suf) { c.font = "900 " + s1 + "px " + SERIF; outlined(c, t.suf, w1, 1372, 9, "#fff"); }
+      if (sp[0]) { c.font = "900 " + s1 + "px " + SERIF; outlined(c, sp[0], w1, 1372, 9, "#fff"); }
+      if (sp[1]) { c.font = "900 " + s2 + "px " + SERIF; outlined(c, sp[1], w1 + w2a, 1372, 7, "#fff"); }
       c.restore(); c.textAlign = "center";
     }
 
@@ -520,20 +538,20 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     c.fillText(Array.from(t.name || "")[0] || "N", 105, 95);
     if (t.name) { fit(c, t.name, "900", SANS, 40, 170, 18); outlined(c, t.name, 105, 200, 10, "#fff"); }
 
-    c.fillStyle = "rgba(255,255,255,.96)"; c.fillRect(500, 24, 750, 56);
-    c.fillStyle = "#e0141e"; poly(c, [[500, 24], [612, 24], [598, 80], [500, 80]]); c.fill();
-    c.fillRect(500, 80, 750, 4);
-    if (t.tag) { fit(c, t.tag, "900", SANS, 32, 90, 16); c.fillStyle = "#fff"; fat(c, t.tag, 551, 53); }
+    var hl = headLines(t.headline), dy = (hl.length - 1) * 42, bh0 = 56 + dy;
+    c.fillStyle = "rgba(255,255,255,.96)"; c.fillRect(500, 24, 750, bh0);
+    c.fillStyle = "#e0141e"; poly(c, [[500, 24], [612, 24], [598, 24 + bh0], [500, 24 + bh0]]); c.fill();
+    c.fillRect(500, 24 + bh0, 750, 4);
+    if (t.tag) { fit(c, t.tag, "900", SANS, 32, 90, 16); c.fillStyle = "#fff"; fat(c, t.tag, 551, 24 + bh0 / 2 + 1); }
     c.textAlign = "left"; c.fillStyle = "#14234b";
-    fit(c, t.headline || "", "900", SANS, 36, 610, 18);
-    fat(c, t.headline || "", 628, 54);
-    if (t.sub) { c.textAlign = "right"; fit(c, t.sub, "900", SANS, 30, 600, 16); outlined(c, t.sub, 1236, 114, 8, "#ffe14a"); }
+    drawHeadLines(c, hl, 628, 24 + bh0 / 2 + 2, 610, 36, 42);
+    if (t.sub) { c.textAlign = "right"; fit(c, t.sub, "900", SANS, 30, 600, 16); outlined(c, t.sub, 1236, 114 + dy, 8, "#ffe14a"); }
 
     if (t.place || t.when) {
       var w1 = 0, w2 = 0;
       if (t.place) { fit(c, t.place, "900", SANS, 26, 300, 14); w1 = c.measureText(t.place).width; }
       if (t.when) { fit(c, t.when, "900", SANS, 24, 300, 14); w2 = c.measureText(t.when).width; }
-      var pw = Math.min(Math.max(w1, w2) + 40, 340), px = w - 30 - pw, py = 136;
+      var pw = Math.min(Math.max(w1, w2) + 40, 340), px = w - 30 - pw, py = 136 + dy;
       c.textAlign = "center";
       if (t.place) {
         c.fillStyle = "#fff"; c.fillRect(px, py, pw, 42);
@@ -567,12 +585,15 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (t.time || t.suf) {
       var fs1 = fit(c, t.time || "", "900", SERIF, 76, 1140, 28) || 76;
       var w1 = t.time ? c.measureText(t.time).width : 0;
-      var s1 = Math.round(fs1 * 0.55); c.font = "900 " + s1 + "px " + SERIF;
-      var w2 = t.suf ? c.measureText(t.suf).width : 0;
+      var s1 = Math.round(fs1 * 0.72), s2 = Math.round(fs1 * 0.5), sp = splitSuf(t.suf || "");
+      c.font = "900 " + s1 + "px " + SERIF; var w2a = sp[0] ? c.measureText(sp[0]).width : 0;
+      c.font = "900 " + s2 + "px " + SERIF; var w2b = sp[1] ? c.measureText(sp[1]).width : 0;
+      var w2 = w2a + w2b;
       var sc = Math.min(1, 1140 / Math.max(1, w1 + w2)), xs = (w - (w1 + w2) * sc) / 2;
       c.save(); c.translate(xs, 0); c.scale(sc, 1); c.textAlign = "left";
       if (t.time) { c.font = "900 " + fs1 + "px " + SERIF; outlined(c, t.time, 0, 676, 11, "#fff"); }
-      if (t.suf) { c.font = "900 " + s1 + "px " + SERIF; outlined(c, t.suf, w1, 676, 8, "#fff"); }
+      if (sp[0]) { c.font = "900 " + s1 + "px " + SERIF; outlined(c, sp[0], w1, 676, 8, "#fff"); }
+      if (sp[1]) { c.font = "900 " + s2 + "px " + SERIF; outlined(c, sp[1], w1 + w2a, 676, 6, "#fff"); }
       c.restore(); c.textAlign = "center";
     }
 
@@ -1290,7 +1311,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     paintSwatches();
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
-    var multi = state.cur === "newst" && k === "headline";
+    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw") && k === "headline";
     if (multi) {
       var ta = document.createElement("textarea");
       ta.className = "ep-input"; ta.rows = 2; inp.parentNode.replaceChild(ta, inp); inp = ta;
