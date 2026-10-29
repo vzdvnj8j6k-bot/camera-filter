@@ -206,6 +206,15 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <p class="small">初期状態では写真全体を枠内に収めます。枠いっぱいに広げたいときは、チェックを外して上下左右の位置を動かしてください。</p>
   </div>
 
+  <div class="sheet" id="tvSheet" hidden>
+    <label class="check"><input type="checkbox" id="tv-on" checked>テレビ画面風の質感（ざらつき・走査線・ぼかし）</label>
+    <div class="seg" style="grid-template-columns: 1fr 1fr">
+      <button type="button" id="animPrev">動きをプレビュー</button>
+      <button type="button" id="animRec">動画で保存(8秒)</button>
+    </div>
+    <p class="small" id="animNote">「逮捕報道」の枠では、テロップが画面に入ってくる動きと、ゆっくりした寄りが付きます。他の枠は、ざらつきとスクロール帯の動きだけです。</p>
+  </div>
+
   <div class="sheet" id="cutSheet">
     <label class="check"><input type="checkbox" id="c-on">人物だけ切り抜いて、ポスター風にする</label>
     <label class="field"><span>大きな文字</span><input type="text" id="c-title" value="WANTED" maxlength="24" autocomplete="off"></label>
@@ -736,8 +745,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   /* Arrest-report layout: white headline panel with blue top bar (top right), white name plate with a small note beside it, two-line black caption box (bottom left). */
   F.newst = { name: "逮捕報道(横長)", size: [1280, 720], fields: { name: "左上の局名", tag: "右上の見出し(1行目)", place: "右上の見出し(2行目)", red: "右上の赤文字", blue: "右上の青文字", time: "名前", suf: "名前の後ろ", ticker: "名前の横の小さな文字", headline: "黒い囲み(自動で折り返し)" } };
   F.newst.draw = function (c, S) {
-    var w = 1280, h = 720, t = S.t, i;
+    var w = 1280, h = 720, t = S.t, i, a = S.a;
+    var zoom = a === undefined ? 1 : 1 + 0.045 * Math.min(1, a / 8);
+    c.save(); c.translate(w * 0.5, h * 0.55); c.scale(zoom, zoom); c.translate(-w * 0.5, -h * 0.55);
     c.filter = "contrast(1.05) saturate(1.05)"; cover(c, S.main, 0, 0, w, h); c.filter = "none";
+    c.restore();
     var bg = c.createLinearGradient(0, 420, 0, h);
     bg.addColorStop(0, "rgba(0,0,0,0)"); bg.addColorStop(1, "rgba(0,0,0,.35)");
     c.fillStyle = bg; c.fillRect(0, 420, w, h - 420);
@@ -746,8 +758,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (t.name) {
       c.font = "700 30px " + SANS;
       var nw = c.measureText(t.name).width + 36;
+      c.save(); if (a !== undefined) c.globalAlpha = ease((a - 0.2) / 0.5);
+      c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 6; c.shadowOffsetY = 2;
       c.fillStyle = "rgba(255,255,255,.92)"; rr(c, 28, 24, nw, 48, 6); c.fill();
+      c.shadowColor = "transparent";
       c.fillStyle = "#14234b"; c.textAlign = "left"; c.fillText(t.name, 46, 49);
+      c.restore();
     }
 
     var pl = [[t.tag, "#111"], [t.place, "#111"], [t.red, "#d8101c"], [t.blue, "#1747c8"]].filter(function (p) { return p[0]; });
@@ -756,10 +772,13 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       var mw = 0;
       pl.forEach(function (p) { fit(c, p[0], "700", SANS, 38, 640, 20); mw = Math.max(mw, c.measureText(p[0]).width); });
       var pw = mw + 48, px = w - 28 - pw, py = 24, ph = 14 + lines * 54 + 10;
+      if (a !== undefined) px += (1 - ease((a - 0.4) / 0.7)) * (pw + 60);
       var bar = c.createLinearGradient(px, 0, px + pw, 0);
       bar.addColorStop(0, "#1a2fa8"); bar.addColorStop(1, "#2fb4ff");
-      c.fillStyle = bar; c.fillRect(px, py, pw, 12);
+      c.save(); c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 10; c.shadowOffsetY = 3;
       c.fillStyle = "rgba(255,255,255,.97)"; c.fillRect(px, py + 12, pw, ph - 12);
+      c.restore();
+      c.fillStyle = bar; c.fillRect(px, py, pw, 12);
       c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 2; c.strokeRect(px, py, pw, ph);
       c.textAlign = "left";
       pl.forEach(function (p, k) {
@@ -781,21 +800,26 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var maxw = 0;
     lines2.forEach(function (s) { fit(c, s, "700", SANS, 52, 1000, 28); maxw = Math.max(maxw, c.measureText(s).width); });
     var bw = maxw + 52;
+    var o2 = a === undefined ? 0 : -(1 - ease((a - 1.0) / 0.7)) * (Math.max(bw, 420) + 80);
     if (t.time || t.suf) {
       var nm = (t.time || "") + (t.suf || "");
       var ns = fit(c, nm, "700", SANS, 36, 520, 20), nwid = c.measureText(nm).width + 32;
       var ny = (bh ? by : bottom) - 58;
-      c.fillStyle = "rgba(255,255,255,.95)"; rr(c, 30, ny, nwid, 48, 4); c.fill();
-      c.fillStyle = "#d8101c"; c.textAlign = "left"; c.fillText(nm, 46, ny + 25);
+      c.save(); c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 8; c.shadowOffsetY = 2;
+      c.fillStyle = "rgba(255,255,255,.95)"; rr(c, 30 + o2, ny, nwid, 48, 4); c.fill();
+      c.restore();
+      c.fillStyle = "#d8101c"; c.textAlign = "left"; c.fillText(nm, 46 + o2, ny + 25);
       if (t.ticker) {
         fit(c, t.ticker, "700", SANS, 32, 600, 18);
-        outlined(c, t.ticker, 30 + nwid + 18, ny + 25, 5, "#fff");
+        outlined(c, t.ticker, 30 + nwid + 18 + o2, ny + 25, 5, "#fff");
       }
     }
     if (bh) {
-      c.fillStyle = "rgba(0,0,0,.86)"; rr(c, 30, by, bw, bh, 5); c.fill();
+      c.save(); c.shadowColor = "rgba(0,0,0,.45)"; c.shadowBlur = 12; c.shadowOffsetY = 3;
+      c.fillStyle = "rgba(0,0,0,.86)"; rr(c, 30 + o2, by, bw, bh, 5); c.fill();
+      c.restore();
       c.textAlign = "left"; c.fillStyle = "#fff";
-      lines2.forEach(function (s, k) { fit(c, s, "700", SANS, 52, 1000, 28); c.fillText(s, 56, by + 11 + 33 + k * 66); });
+      lines2.forEach(function (s, k) { fit(c, s, "700", SANS, 52, 1000, 28); c.fillText(s, 56 + o2, by + 11 + 33 + k * 66); });
     }
   };
 
@@ -865,7 +889,32 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       t = Object.assign({}, t);
       KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
     }
-    return { main: cutReady ? poster.canvas : state.main, sub: state.sub, t: t, o: opts };
+    return { main: cutReady ? poster.canvas : state.main, sub: state.sub, t: t, o: opts, a: animSec };
+  }
+
+  /* TV look + animation */
+  var animSec, tvfx = { on: true }, TV_FRAMES = ["news", "newsw", "newsr", "newst", "newsd"];
+  function ease(x) { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); }
+  function isTVFrame(id) { return TV_FRAMES.indexOf(id) >= 0; }
+  var tvBuf = document.createElement("canvas"), tvBufCtx = tvBuf.getContext("2d"), noisePat = null;
+  function applyTV(c, w, h, tick) {
+    if (tvBuf.width !== Math.round(w * 0.62)) { tvBuf.width = Math.round(w * 0.62); tvBuf.height = Math.round(h * 0.62); }
+    tvBufCtx.drawImage(c.canvas, 0, 0, tvBuf.width, tvBuf.height);
+    c.save(); c.globalAlpha = 0.5; c.imageSmoothingEnabled = true; c.drawImage(tvBuf, 0, 0, w, h); c.restore();
+    if (!noisePat) {
+      var nc = document.createElement("canvas"); nc.width = nc.height = 256;
+      var nx = nc.getContext("2d"), nd = nx.createImageData(256, 256), q;
+      for (q = 0; q < nd.data.length; q += 4) { var v = Math.random() * 255; nd.data[q] = nd.data[q + 1] = nd.data[q + 2] = v; nd.data[q + 3] = 255; }
+      nx.putImageData(nd, 0, 0); noisePat = c.createPattern(nc, "repeat");
+    }
+    c.save(); c.globalAlpha = 0.055; c.translate((tick * 97) % 256, (tick * 57) % 256); c.fillStyle = noisePat; c.fillRect(-256, -256, w + 512, h + 512); c.restore();
+    c.save(); c.fillStyle = "rgba(0,0,0,.07)";
+    for (var y = 0; y < h; y += 4) c.fillRect(0, y, w, 1.4);
+    c.restore();
+    var vg = c.createRadialGradient(w / 2, h / 2, h * 0.45, w / 2, h / 2, h * 0.95);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.28)");
+    c.fillStyle = vg; c.fillRect(0, 0, w, h);
+    if (tick) { c.fillStyle = "rgba(255,255,255,.025)"; c.fillRect(0, (tick * 5) % h, w, 36); }
   }
 
   /* on-image editing: remember where each text is drawn so a tap can open an editor on top of it */
@@ -917,6 +966,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       var sz = F[id].size || [W, H];
       drawScrollingTicker(ctx, sz[0], sz[1]);
     }
+    if (tvfx.on && isTVFrame(id)) applyTV(ctx, cv.width, cv.height, animSec === undefined ? 0 : Math.floor(animSec * 30) + 1);
     syncMini();
   }
 
@@ -991,6 +1041,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       if (k in fl) { $("l-" + k).textContent = fl[k]; $("f-" + k).value = texts[id][k] || ""; }
     });
     closeEditor();
+    $("tvSheet").hidden = !isTVFrame(id);
     $("opt-led").hidden = id !== "led";
     $("opt-dual").hidden = id !== "dual";
     $("subPasteBox").style.display = (id === "dual" || id === "newsd") ? "" : "none";
@@ -1252,6 +1303,41 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
     closeEditor();
   });
+  /* animation preview and video recording */
+  var animRAF = null, recording = false;
+  function playAnim(seconds, done) {
+    cancelAnimationFrame(animRAF); closeEditor();
+    var t0 = performance.now();
+    function step(now) {
+      animSec = (now - t0) / 1000;
+      if (animSec >= seconds) { animSec = undefined; render(); animRAF = null; if (done) done(); return; }
+      render(); animRAF = requestAnimationFrame(step);
+    }
+    animRAF = requestAnimationFrame(step);
+  }
+  $("tv-on").addEventListener("change", function (e) { tvfx.on = e.target.checked; redraw(); });
+  $("animPrev").onclick = function () { if (!recording) playAnim(8); };
+  $("animRec").onclick = function () {
+    if (recording) return;
+    if (!(cv.captureStream && window.MediaRecorder)) { $("msg").textContent = "この端末のブラウザは動画の書き出しに対応していません。"; return; }
+    var types = ["video/mp4;codecs=avc1", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"], mime = "";
+    types.some(function (m) { if (MediaRecorder.isTypeSupported(m)) { mime = m; return true; } return false; });
+    var chunks = [], rec;
+    try { rec = new MediaRecorder(cv.captureStream(30), mime ? { mimeType: mime, videoBitsPerSecond: 6000000 } : {}); }
+    catch (e) { $("msg").textContent = "動画の書き出しを開始できませんでした。"; return; }
+    recording = true; $("animRec").textContent = "録画中…"; $("msg").textContent = "録画中です。8秒お待ちください。";
+    rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+    rec.onstop = function () {
+      recording = false; $("animRec").textContent = "動画で保存(8秒)";
+      var type = rec.mimeType || mime || "video/webm", blob = new Blob(chunks, { type: type });
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      a.download = "news." + (type.indexOf("mp4") >= 0 ? "mp4" : "webm");
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      $("msg").textContent = "動画を保存しました。";
+    };
+    rec.start();
+    playAnim(8, function () { setTimeout(function () { rec.stop(); }, 150); });
+  };
   $("toggleFields").onclick = function () {
     var c = $("fieldsSheet").classList.toggle("collapsed");
     $("toggleFields").textContent = c ? "文字欄をすべて表示" : "文字欄を閉じる";
@@ -1453,7 +1539,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
           if (typeof v === "string" && v !== (defaults[id] || {})[k]) { (diff[id] = diff[id] || {})[k] = v; }
         });
       });
-      localStorage.setItem(STORE_KEY, JSON.stringify({ cur: state.cur, texts: diff, colors: colors, led: opts.led, dual: opts.dual, scrollOn: opts.scrollOn, view: view }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ cur: state.cur, texts: diff, colors: colors, led: opts.led, dual: opts.dual, scrollOn: opts.scrollOn, view: view, tv: tvfx.on }));
     } catch (e) {}
   }
   function idb(cb) {
@@ -1509,6 +1595,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         $("v-contain").checked = view.contain; $("v-y").value = Math.round(view.fy * 100); $("v-x").value = Math.round(view.fx * 100);
         updView();
       }
+      if (typeof saved.tv === "boolean") { tvfx.on = saved.tv; $("tv-on").checked = saved.tv; }
       if (saved.cur && F[saved.cur]) startFrame = saved.cur;
     } catch (e) {}
   }
