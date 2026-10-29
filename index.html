@@ -237,6 +237,16 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <p class="small" id="animNote">「逮捕報道」の枠では、テロップが画面に入ってくる動きと、ゆっくりした寄りが付きます。他の枠は、ざらつきとスクロール帯の動きだけです。</p>
   </div>
 
+  <div class="sheet" id="shapeSheet">
+    <label class="check"><input type="checkbox" id="sh-on">整形顔フィルター（顔を見つけて、目・あご・鼻などを変形）</label>
+    <label class="row" for="sh-eyes" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">目を大きく<input type="range" id="sh-eyes" min="0" max="100" value="35"><output id="sh-eyesO">35</output></label>
+    <label class="row" for="sh-jaw" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">あごをシャープに<input type="range" id="sh-jaw" min="0" max="100" value="40"><output id="sh-jawO">40</output></label>
+    <label class="row" for="sh-face" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">顔を小さく<input type="range" id="sh-face" min="0" max="100" value="20"><output id="sh-faceO">20</output></label>
+    <label class="row" for="sh-nose" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">鼻を細く<input type="range" id="sh-nose" min="0" max="100" value="30"><output id="sh-noseO">30</output></label>
+    <label class="row" for="sh-lips" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">唇をふっくら<input type="range" id="sh-lips" min="0" max="100" value="0"><output id="sh-lipsO">0</output></label>
+    <p class="small" id="sh-msg">写真を選んでから、チェックを入れてください。顔を見つけるAIは端末内で動き、写真は送信されません（初回だけ、AIの部品をダウンロードします）。</p>
+  </div>
+
   <div class="sheet" id="cutSheet">
     <label class="check"><input type="checkbox" id="c-on">人物だけ切り抜いて、ポスター風にする</label>
     <label class="field"><span>大きな文字</span><input type="text" id="c-title" value="WANTED" maxlength="24" autocomplete="off"></label>
@@ -322,9 +332,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   }
   /* How the user's own photos are placed in a frame: crop position, or fit whole with a blurred fill. */
   var view = { fx: 0.5, fy: 0.4, contain: true };
+  /* face-reshape filter: the warped copy of the main photo (valid while shaped.src is still the main photo) */
+  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0 } };
   function cover(c, img, x, y, w, h) {
     var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-    var user = img === state.main || img === state.sub || img === poster.canvas;
+    var user = img === state.main || img === state.sub || img === poster.canvas || img === shaped.canvas;
     var s = Math.max(w / iw, h / ih), dw = iw * s, dh = ih * s;
     if (user && view.contain) {
       var pf = c.filter;
@@ -954,7 +966,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var rk = RICH_KEYS[id] || [];
     Object.keys(t).forEach(function (k) { if (typeof t[k] === "string" && rk.indexOf(k) < 0) t[k] = plain(t[k]); });
     if (KEEP[id]) KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
-    return { main: cutReady ? poster.canvas : state.main, sub: state.sub, t: t, o: opts, a: animSec };
+    var shapeReady = shaped.canvas && shaped.src === state.main;
+    return { main: cutReady ? poster.canvas : (shapeReady ? shaped.canvas : state.main), sub: state.sub, t: t, o: opts, a: animSec };
   }
 
   /* TV look + animation */
@@ -1221,7 +1234,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     img.onload = function () {
       state[which] = img; have[which] = true; setThumb(which, url); $("sampleNote").hidden = true;
       blobs[which] = file; saveBlob(which, file);
-      if (which === "main") cutChanged();
+      if (which === "main") { cutChanged(); shapeChanged(); }
       redraw();
     };
     img.onerror = function () { $("msg").textContent = "この画像は読み込めませんでした。JPEGかPNGを選んでください。"; };
@@ -1236,7 +1249,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var t = state.main; state.main = state.sub; state.sub = t;
     var hv = have.main; have.main = have.sub; have.sub = hv;
     var bt = blobs.main; blobs.main = blobs.sub; blobs.sub = bt; saveBlob("main", blobs.main); saveBlob("sub", blobs.sub);
-    cutChanged();
+    cutChanged(); shapeChanged();
     var bm = $("thumbMain").style.backgroundImage, bs = $("thumbSub").style.backgroundImage;
     $("thumbMain").style.backgroundImage = bs; $("thumbSub").style.backgroundImage = bm;
     var sm = $("thumbMain").firstElementChild, ss = $("thumbSub").firstElementChild;
@@ -1800,7 +1813,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     setThumb("main", ""); setThumb("sub", "");
     have.main = false; have.sub = false;
     blobs.main = null; blobs.sub = null; saveBlob("main", null); saveBlob("sub", null);
-    cutReset();
+    cutReset(); shapeChanged();
     $("sampleNote").hidden = false; redraw();
   };
 
@@ -1920,6 +1933,116 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   });
   updView();
 
+  /* ---------- face reshape ("整形顔") ---------- */
+  var FACE_MODEL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+  var faceLMPromise = null, shapeTimer = null, shapeSeq = 0, faceCache = { img: null, canvas: null, faces: null };
+  function setShapeMsg(m) { $("sh-msg").textContent = m; }
+  function getFaceLandmarker() {
+    if (!faceLMPromise) {
+      faceLMPromise = import(MP_BASE + "/vision_bundle.mjs").then(function (m) {
+        return m.FilesetResolver.forVisionTasks(MP_BASE + "/wasm").then(function (fs) {
+          return m.FaceLandmarker.createFromOptions(fs, { baseOptions: { modelAssetPath: FACE_MODEL }, runningMode: "IMAGE", numFaces: 4 });
+        });
+      });
+      faceLMPromise.catch(function () { faceLMPromise = null; });
+    }
+    return faceLMPromise;
+  }
+  async function detectFaces(img) {
+    if (faceCache.img === img && faceCache.faces) return faceCache;
+    var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height, k = Math.min(1, 1600 / Math.max(iw, ih));
+    var cvs = document.createElement("canvas"); cvs.width = Math.round(iw * k); cvs.height = Math.round(ih * k);
+    cvs.getContext("2d").drawImage(img, 0, 0, cvs.width, cvs.height);
+    var lm = await getFaceLandmarker();
+    var res = lm.detect(cvs);
+    faceCache = { img: img, canvas: cvs, faces: res.faceLandmarks || [] };
+    return faceCache;
+  }
+  /* local "liquify": bulge (s>0 enlarges, s<0 shrinks) and push handles, summed as a displacement field and sampled bilinearly */
+  function shapeWarp(srcCv, faces) {
+    var w = srcCv.width, h = srcCv.height, src = srcCv.getContext("2d").getImageData(0, 0, w, h), sd = src.data;
+    var out = new ImageData(new Uint8ClampedArray(sd), w, h), od = out.data, v = shaped.vals;
+    faces.forEach(function (lm) {
+      function P(i) { return { x: lm[i].x * w, y: lm[i].y * h }; }
+      function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+      var fw = dist(P(234), P(454)), nb = P(168), fc = { x: nb.x, y: (nb.y + P(2).y) / 2 }, H = [], e = v.eyes / 100, j = v.jaw / 100, f2 = v.face / 100, n = v.nose / 100, l = v.lips / 100;
+      if (e > 0) [[468, 33, 133], [473, 362, 263]].forEach(function (a) {
+        var c = lm[a[0]] ? P(a[0]) : { x: (P(a[1]).x + P(a[2]).x) / 2, y: (P(a[1]).y + P(a[2]).y) / 2 };
+        H.push({ x: c.x, y: c.y, r: dist(P(a[1]), P(a[2])) * 1.3, s: 0.6 * e });
+      });
+      if (j > 0) {
+        [[234, 93, 132, 58, 172, 136, 150, 149, 176, 148], [454, 323, 361, 288, 397, 365, 379, 378, 400, 377]].forEach(function (arr) {
+          arr.forEach(function (i, k) {
+            var p = P(i), fct = 0.5 + 0.5 * (k / (arr.length - 1));
+            H.push({ x: p.x, y: p.y, r: fw * 0.3, dx: (fc.x - p.x > 0 ? 1 : -1) * fw * 0.085 * j * fct, dy: 0 });
+          });
+        });
+        var ch = P(152); H.push({ x: ch.x, y: ch.y, r: fw * 0.28, dx: 0, dy: -fw * 0.05 * j });
+      }
+      if (f2 > 0) H.push({ x: fc.x, y: fc.y, r: fw * 1.0, s: -0.3 * f2 });
+      if (n > 0) [129, 358, 98, 327].forEach(function (i) {
+        var p = P(i); H.push({ x: p.x, y: p.y, r: fw * 0.15, dx: (nb.x - p.x > 0 ? 1 : -1) * fw * 0.045 * n, dy: 0 });
+      });
+      if (l > 0) {
+        var a1 = P(13), b1 = P(14); H.push({ x: (a1.x + b1.x) / 2, y: (a1.y + b1.y) / 2, r: dist(P(61), P(291)) * 0.9, s: 0.45 * l });
+      }
+      if (!H.length) return;
+      var x0 = w, y0 = h, x1 = 0, y1 = 0;
+      H.forEach(function (q) { q.r2 = q.r * q.r; x0 = Math.min(x0, q.x - q.r); y0 = Math.min(y0, q.y - q.r); x1 = Math.max(x1, q.x + q.r); y1 = Math.max(y1, q.y + q.r); });
+      x0 = Math.max(0, Math.floor(x0)); y0 = Math.max(0, Math.floor(y0)); x1 = Math.min(w - 1, Math.ceil(x1)); y1 = Math.min(h - 1, Math.ceil(y1));
+      for (var y = y0; y <= y1; y++) for (var x = x0; x <= x1; x++) {
+        var ax = 0, ay = 0, hit = false;
+        for (var q = 0; q < H.length; q++) {
+          var hd = H[q], ddx = x - hd.x, ddy = y - hd.y, d2 = ddx * ddx + ddy * ddy;
+          if (d2 >= hd.r2) continue;
+          var t = 1 - d2 / hd.r2, wg = t * t;
+          if (hd.s !== undefined) { ax -= ddx * hd.s * wg; ay -= ddy * hd.s * wg; } else { ax -= hd.dx * wg; ay -= hd.dy * wg; }
+          hit = true;
+        }
+        if (!hit) continue;
+        var sx = Math.min(w - 1.001, Math.max(0, x + ax)), sy = Math.min(h - 1.001, Math.max(0, y + ay));
+        var ix = sx | 0, iy = sy | 0, fx = sx - ix, fy = sy - iy, i00 = (iy * w + ix) * 4, i10 = i00 + 4, i01 = i00 + w * 4, i11 = i01 + 4, o = (y * w + x) * 4;
+        for (var c2 = 0; c2 < 3; c2++) {
+          od[o + c2] = sd[i00 + c2] * (1 - fx) * (1 - fy) + sd[i10 + c2] * fx * (1 - fy) + sd[i01 + c2] * (1 - fx) * fy + sd[i11 + c2] * fx * fy;
+        }
+      }
+    });
+    var oc = document.createElement("canvas"); oc.width = w; oc.height = h; oc.getContext("2d").putImageData(out, 0, 0);
+    return oc;
+  }
+  async function shapeRun() {
+    var seq = ++shapeSeq;
+    if (!shaped.on || !state.main) return;
+    setShapeMsg("顔を探しています…（初回は、AIの部品の読み込みに十数秒かかります）");
+    try {
+      var info = await detectFaces(state.main);
+      if (seq !== shapeSeq) return;
+      if (!info.faces.length) {
+        shaped.canvas = null; shaped.src = null; redraw();
+        setShapeMsg("顔が見つかりませんでした。正面の顔がはっきり写った写真でお試しください。");
+        return;
+      }
+      shaped.canvas = shapeWarp(info.canvas, info.faces); shaped.src = state.main;
+      setShapeMsg(info.faces.length + "人の顔を変形しました。スライダーで強さを調整できます。"); redraw();
+    } catch (e) {
+      console.warn("face reshape failed", e);
+      setShapeMsg("顔を見つけるAIを読み込めませんでした。通信状況をご確認ください。");
+    }
+  }
+  function shapeChanged() { shaped.canvas = null; shaped.src = null; if (shaped.on) shapeRun(); }
+  function shapeSchedule() { clearTimeout(shapeTimer); shapeTimer = setTimeout(shapeRun, 200); }
+  $("sh-on").addEventListener("change", function (e) {
+    shaped.on = e.target.checked;
+    if (shaped.on) shapeRun(); else { shapeSeq++; shaped.canvas = null; shaped.src = null; setShapeMsg("写真を選んでから、チェックを入れてください。"); redraw(); }
+    save();
+  });
+  ["eyes", "jaw", "face", "nose", "lips"].forEach(function (k) {
+    $("sh-" + k).addEventListener("input", function () {
+      shaped.vals[k] = +$("sh-" + k).value; $("sh-" + k + "O").textContent = $("sh-" + k).value;
+      if (shaped.on) shapeSchedule(); save();
+    });
+  });
+
   /* paste: an image on the clipboard becomes the main photo (in the dual frame, the second one goes to the selfie slot) */
   document.addEventListener("paste", function (e) {
     var items = (e.clipboardData && e.clipboardData.items) || [];
@@ -1990,7 +2113,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
           if (typeof v === "string" && v !== (defaults[id] || {})[k]) { (diff[id] = diff[id] || {})[k] = v; }
         });
       });
-      localStorage.setItem(STORE_KEY, JSON.stringify({ cur: state.cur, texts: diff, colors: colors, led: opts.led, dual: opts.dual, scrollOn: opts.scrollOn, view: view, tv: tvfx.on, narr: { text: $("narr").value, rate: $("narrRate").value, voice: $("narrVoice").value, on: $("narr-on").checked } }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ cur: state.cur, texts: diff, colors: colors, led: opts.led, dual: opts.dual, scrollOn: opts.scrollOn, view: view, tv: tvfx.on, shape: { on: shaped.on, vals: shaped.vals }, narr: { text: $("narr").value, rate: $("narrRate").value, voice: $("narrVoice").value, on: $("narr-on").checked } }));
     } catch (e) {}
   }
   function idb(cb) {
@@ -2010,7 +2133,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     img.onload = function () {
       if (have[which]) return;
       state[which] = img; have[which] = true; blobs[which] = blob; setThumb(which, url); $("sampleNote").hidden = true;
-      if (which === "main") cutChanged();
+      if (which === "main") { cutChanged(); shapeChanged(); }
       redraw();
     };
     img.src = url;
@@ -2045,6 +2168,13 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         view.fx = saved.view.fx; view.fy = saved.view.fy; view.contain = !!saved.view.contain;
         $("v-contain").checked = view.contain; $("v-y").value = Math.round(view.fy * 100); $("v-x").value = Math.round(view.fx * 100);
         updView();
+      }
+      if (saved.shape) {
+        ["eyes", "jaw", "face", "nose", "lips"].forEach(function (k) {
+          var sv = saved.shape.vals && saved.shape.vals[k];
+          if (typeof sv === "number") { shaped.vals[k] = sv; $("sh-" + k).value = sv; $("sh-" + k + "O").textContent = sv; }
+        });
+        shaped.on = !!saved.shape.on; $("sh-on").checked = shaped.on;
       }
       if (saved.narr) {
         $("narr").value = saved.narr.text || ""; $("narrRate").value = saved.narr.rate || 100;
