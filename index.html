@@ -2172,6 +2172,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         H.push({ free: true, x: lo.x, y: lo.y, r: ew * 0.5, dx: 0, dy: ew * 0.15 * vgw });
         H.push({ free: true, x: br.x, y: br.y, r: ew * 0.8, dx: 0, dy: -ew * 0.2 * vgw });
       });
+      if (vgw > 0) {
+        var mA = P(61), mB = P(291), mw = dist(mA, mB), sg = mA.x < mB.x ? 1 : -1;
+        H.push({ free: true, x: mA.x, y: mA.y, r: mw * 0.32, dx: -sg * mw * 0.05 * vgw, dy: -mw * 0.17 * vgw });
+        H.push({ free: true, x: mB.x, y: mB.y, r: mw * 0.32, dx: sg * mw * 0.05 * vgw, dy: -mw * 0.17 * vgw });
+      }
       var trw = (v.tired || 0) / 100;
       if (trw > 0) [[468, 33, 133], [473, 362, 263]].forEach(function (a) {
         var c = lm[a[0]] ? P(a[0]) : { x: (P(a[1]).x + P(a[2]).x) / 2, y: (P(a[1]).y + P(a[2]).y) / 2 };
