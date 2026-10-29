@@ -176,6 +176,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   .app > :not(header):not(.shot) { grid-column: 2; }
 }
 .pastebar { display: grid; gap: 8px; }
+.shot .hint { bottom: 76px; }
+.dl { width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px; border: 0; border-radius: 999px; background: var(--fg); color: var(--bg); font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
+.dl svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .pastebar input[type="text"] { border: 1.5px dashed #3a3a3c; background: transparent; }
 </style>
 
@@ -205,6 +208,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   <div class="shot">
     <canvas id="cv" width="1080" height="1440" role="img" aria-label="選んだ枠を重ねた写真のプレビュー"></canvas>
     <button type="button" class="sh-badge" id="shBadge" hidden>顔を加工中（タップで解除）</button>
+    <button type="button" class="dl" id="dl"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>画像をダウンロード</button>
     <div class="hint" id="hint" hidden>小さい写真をタップで入れ替え</div>
   </div>
 
@@ -2786,6 +2790,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       );
     }, "image/png");
   };
+
+  $("dl").onclick = function () { $("save").onclick(); };
 
   /* persistence: texts, colors, settings in localStorage; photos in IndexedDB, so a reload keeps the work */
   var STORE_KEY = "dualshot.v1", defaults = JSON.parse(JSON.stringify(texts)), saveTimer = null, blobs = { main: null, sub: null };
