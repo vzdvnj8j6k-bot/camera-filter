@@ -1416,20 +1416,28 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       .then(function (buf) { vvCache[key] = buf; return buf; });
   }
   function splitNarr(text) {
-    var sents = text.match(/[^。！？!?\n]+[。！？!?]?/g) || [text], chunks = [];
-    sents.forEach(function (s) {
-      s = s.trim();
+    text = text.replace(/([^、，,。！？!?\s「])「/g, "$1、「");
+    var clauses = text.match(/[^。！？!?、，,\n]+[。！？!?、，,]?/g) || [text], chunks = [], carry = "";
+    clauses.forEach(function (s) {
+      s = (carry + s).trim(); carry = "";
       if (!s) return;
+      if (s.length < 4 && /[、，,]$/.test(s)) { carry = s; return; }
       while (s.length > 90) { chunks.push(s.slice(0, 90)); s = s.slice(90); }
       chunks.push(s);
     });
+    if (carry) chunks.push(carry);
     return chunks;
+  }
+  function pauseAfter(s) {
+    if (/[。！？!?]$/.test(s)) return 0.7;
+    if (/[、，,]$/.test(s)) return 0.4;
+    return 0.3;
   }
   /* one request per sentence, with a pause after each, so the delivery has breaks like a newsreader */
   async function vvBuffer(text, speaker) {
     var parts = [], gaps = [], i, total = 0, chunks = splitNarr(text), sr = actx.sampleRate;
     for (i = 0; i < chunks.length; i++) {
-      var b = await vvChunk(chunks[i], speaker), g = Math.round(sr * (/[。！？!?]$/.test(chunks[i]) ? 0.65 : 0.4));
+      var b = await vvChunk(chunks[i], speaker), g = Math.round(sr * pauseAfter(chunks[i]));
       if (i === chunks.length - 1) g = Math.round(sr * 0.2);
       parts.push(b); gaps.push(g); total += b.length + g;
       if (i < chunks.length - 1) await sleep(600);
