@@ -805,9 +805,21 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   var opts = { led: "full", dual: { pos: "tl", size: 34, border: 8, radius: 28, late: false, flat: true }, scrollOn: false };
   var state = { cur: "news", main: sample("main"), sub: sample("sub") };
 
+  /* empty text must not make the frame's boxes vanish: an invisible placeholder keeps each box drawn (and tappable) */
+  var KEEP = {
+    news: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
+    newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
+    newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
+    newst: ["name", "tag", "place", "time", "headline"]
+  };
+  function placeholder(k) { return "　　　" + new Array(FIELD_KEYS.indexOf(k) + 2).join("​"); }
   function S(id) {
-    var cutReady = poster.on && poster.canvas && cut && cut.src === state.main;
-    return { main: cutReady ? poster.canvas : state.main, sub: state.sub, t: texts[id], o: opts };
+    var cutReady = poster.on && poster.canvas && cut && cut.src === state.main, t = texts[id];
+    if (KEEP[id]) {
+      t = Object.assign({}, t);
+      KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
+    }
+    return { main: cutReady ? poster.canvas : state.main, sub: state.sub, t: t, o: opts };
   }
 
   /* on-image editing: remember where each text is drawn so a tap can open an editor on top of it */
@@ -1044,7 +1056,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     return px >= insetRect.x && px <= insetRect.x + insetRect.w && py >= insetRect.y && py <= insetRect.y + insetRect.h;
   }
   function keyForText(s) {
-    var t = texts[state.cur], fl = F[state.cur].fields, loose = null, n, k, v;
+    var t = texts[state.cur], fl = F[state.cur].fields, loose = null, n, k, v, ph = s.match(/^　　　(​+)/);
+    if (ph) { k = FIELD_KEYS[ph[1].length - 1]; if (k && k in fl) return k; }
     if (t.time && t.suf && s === t.time + t.suf && "time" in fl) return "time";
     for (n = 0; n < FIELD_KEYS.length; n++) {
       k = FIELD_KEYS[n]; v = t[k];
