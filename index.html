@@ -2164,7 +2164,31 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     cutMsg(text); redraw();
   }
   /* person cut-out as a transparent-background canvas (long side at most 1024 px) */
+  /* high-quality cut-out: @imgly/background-removal runs in the browser (model downloaded on first use); MediaPipe below is the fallback */
+  var imglyPromise = null, imglyFailed = false;
+  function getImgly() {
+    if (!imglyPromise) {
+      imglyPromise = import("https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm");
+      imglyPromise.catch(function () { imglyPromise = null; });
+    }
+    return imglyPromise;
+  }
   function segmentPerson(src) {
+    if (imglyFailed) return segmentPersonMP(src);
+    var sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height, k = Math.min(1, 1280 / Math.max(sw, sh));
+    var base = document.createElement("canvas"); base.width = Math.round(sw * k); base.height = Math.round(sh * k);
+    base.getContext("2d").drawImage(src, 0, 0, base.width, base.height);
+    return getImgly().then(function (m) {
+      var fn = m.removeBackground || (m.default && m.default.removeBackground) || m.default;
+      return new Promise(function (ok) { base.toBlob(ok, "image/png"); }).then(function (blob) {
+        return fn(blob, { model: "isnet_fp16", output: { format: "image/png" } });
+      });
+    }).then(function (out) { return createImageBitmap(out); }).then(function (bmp) {
+      var sm = document.createElement("canvas"); sm.width = bmp.width; sm.height = bmp.height;
+      sm.getContext("2d").drawImage(bmp, 0, 0); return sm;
+    }).catch(function (e) { imglyFailed = true; try { console.warn("imgly cut-out failed, using MediaPipe", e); } catch (x) {} return segmentPersonMP(src); });
+  }
+  function segmentPersonMP(src) {
     return getSegmenter().then(function (seg) {
       var sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
       var k = Math.min(1, 1536 / Math.max(sw, sh));
