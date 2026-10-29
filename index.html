@@ -118,11 +118,22 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
 @media (prefers-reduced-motion: reduce) { .shutter i { transition: none; } }
 #fieldsSheet.collapsed .field, #fieldsSheet.collapsed .check { display: none; }
 .seg-btn { font-family: inherit; font-size: 0.82rem; padding: 10px 12px; border-radius: 10px; border: 0; background: var(--surface-2); color: var(--fg); cursor: pointer; }
-.inline-edit {
-  position: absolute; z-index: 8; height: 44px; font-family: var(--font-body); font-size: 16px; font-weight: 700;
-  padding: 0 12px; border: 2px solid #2b7bff; border-radius: 10px; background: #fff; color: #111;
-  box-shadow: 0 4px 18px rgba(0,0,0,.55);
+.edit-hl {
+  position: absolute; z-index: 7; pointer-events: none; border: 3px solid #ffd000; border-radius: 8px;
+  box-shadow: 0 0 0 2px rgba(0,0,0,.55); animation: hlp 0.9s ease-in-out infinite alternate;
 }
+@keyframes hlp { from { opacity: 1; } to { opacity: .35; } }
+.edit-panel {
+  position: fixed; left: 0; right: 0; z-index: 30; background: #1c1c1e; border-top: 1px solid #3a3a3c;
+  padding: 10px max(16px, env(safe-area-inset-left, 0px)) calc(10px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -8px 28px rgba(0,0,0,.65);
+}
+.ep-in { max-width: 440px; margin: 0 auto; display: grid; gap: 8px; }
+.ep-top { display: flex; justify-content: space-between; align-items: center; }
+.ep-label { font-size: 0.82rem; font-weight: 700; color: #ffd000; }
+.ep-done { font-family: inherit; font-size: 0.9rem; font-weight: 700; padding: 9px 22px; border: 0; border-radius: 999px; background: #fff; color: #000; cursor: pointer; }
+input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius: 12px; background: #fff; color: #111; padding: 0 14px; }
+@media (prefers-reduced-motion: reduce) { .edit-hl { animation: none; } }
 #miniCv {
   position: fixed; top: 10px; right: max(10px, env(safe-area-inset-right, 10px));
   width: 72px; height: 96px; border-radius: 10px; z-index: 20;
@@ -1037,26 +1048,60 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
     }
     return loose;
   }
-  var editor = null;
-  function closeEditor() { if (editor) { var e = editor; editor = null; if (e.parentNode) e.parentNode.removeChild(e); } }
-  function openEditor(k, r) {
-    closeEditor();
+  /* editing panel: docked above the keyboard, with a yellow frame around the text being edited on the image */
+  var editor = null, hl = null, editKey = null, vv = window.visualViewport;
+  function findRegion(k) {
+    for (var n = regions.length - 1; n >= 0; n--) if (keyForText(regions[n].text) === k) return regions[n];
+    return null;
+  }
+  function updateHl() {
+    if (!hl) return;
+    var r = findRegion(editKey);
+    if (!r) { hl.style.display = "none"; return; }
     var rect = cv.getBoundingClientRect(), shot = cv.parentNode.getBoundingClientRect(), sx = rect.width / cv.width;
-    var el = document.createElement("input");
-    el.type = "text"; el.className = "inline-edit"; el.autocomplete = "off";
-    el.value = texts[state.cur][k] || ""; el.placeholder = F[state.cur].fields[k];
-    el.setAttribute("aria-label", F[state.cur].fields[k]);
-    var wpx = Math.min(Math.max(r.w * sx + 28, 200), rect.width - 8);
-    var lpx = Math.min(Math.max(rect.left - shot.left + r.x * sx - 6, rect.left - shot.left + 4), rect.left - shot.left + rect.width - wpx - 4);
-    var tpx = Math.max(rect.top - shot.top + r.y * sx - 6, rect.top - shot.top + 4);
-    el.style.cssText = "left:" + lpx + "px;top:" + tpx + "px;width:" + wpx + "px";
-    el.addEventListener("input", function () {
-      texts[state.cur][k] = el.value; $("f-" + k).value = el.value; redraw();
+    hl.style.display = "block";
+    hl.style.left = (rect.left - shot.left + r.x * sx - 8) + "px"; hl.style.top = (rect.top - shot.top + r.y * sx - 6) + "px";
+    hl.style.width = (r.w * sx + 16) + "px"; hl.style.height = (r.h * sx + 12) + "px";
+  }
+  function placePanel() {
+    if (!editor) return;
+    var h = vv ? vv.height : window.innerHeight, top = vv ? vv.offsetTop : 0;
+    editor.style.top = (top + h - editor.offsetHeight) + "px";
+    var r = findRegion(editKey);
+    if (r) {
+      var rect = cv.getBoundingClientRect(), sx = rect.width / cv.width;
+      var bottom = rect.top + (r.y + r.h) * sx + 16, limit = top + h - editor.offsetHeight - 8;
+      var topEdge = rect.top + r.y * sx - 16;
+      if (bottom > limit) window.scrollBy({ top: bottom - limit, behavior: "smooth" });
+      else if (topEdge < 60) window.scrollBy({ top: topEdge - 60, behavior: "smooth" });
+    }
+    updateHl();
+  }
+  function closeEditor() {
+    if (editor) { editor.remove(); editor = null; }
+    if (hl) { hl.remove(); hl = null; }
+    editKey = null;
+    if (vv) { vv.removeEventListener("resize", placePanel); vv.removeEventListener("scroll", placePanel); }
+  }
+  function openEditor(k) {
+    closeEditor();
+    editKey = k;
+    var label = F[state.cur].fields[k];
+    hl = document.createElement("div"); hl.className = "edit-hl"; cv.parentNode.appendChild(hl);
+    editor = document.createElement("div"); editor.className = "edit-panel";
+    editor.innerHTML = '<div class="ep-in"><div class="ep-top"><span class="ep-label"></span><button type="button" class="ep-done">完了</button></div><input type="text" class="ep-input" autocomplete="off"></div>';
+    editor.querySelector(".ep-label").textContent = "編集中：" + label;
+    var inp = editor.querySelector(".ep-input");
+    inp.value = texts[state.cur][k] || ""; inp.placeholder = label; inp.setAttribute("aria-label", label);
+    inp.addEventListener("input", function () {
+      texts[state.cur][k] = inp.value; $("f-" + k).value = inp.value; redraw(); updateHl();
     });
-    el.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === "Escape") el.blur(); });
-    el.addEventListener("blur", function () { if (editor === el) closeEditor(); });
-    cv.parentNode.appendChild(el); editor = el;
-    el.focus(); el.select();
+    inp.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === "Escape") closeEditor(); });
+    editor.querySelector(".ep-done").addEventListener("click", closeEditor);
+    document.body.appendChild(editor);
+    if (vv) { vv.addEventListener("resize", placePanel); vv.addEventListener("scroll", placePanel); }
+    inp.focus(); inp.select();
+    placePanel(); setTimeout(placePanel, 250); setTimeout(placePanel, 600);
   }
   cv.addEventListener("click", function (e) {
     if (hitInset(e)) { swap(); return; }
@@ -1065,7 +1110,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
       r = regions[n];
       if (px >= r.x - pad && px <= r.x + r.w + pad && py >= r.y - pad && py <= r.y + r.h + pad) {
         k = keyForText(r.text);
-        if (k) { openEditor(k, r); return; }
+        if (k) { openEditor(k); return; }
       }
     }
     closeEditor();
