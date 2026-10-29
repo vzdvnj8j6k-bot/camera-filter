@@ -175,6 +175,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   .app > .shot { grid-column: 1; grid-row: 2 / span 30; position: sticky; top: 8px; }
   .app > :not(header):not(.shot) { grid-column: 2; }
 }
+.pastebar { display: grid; gap: 8px; }
 </style>
 
 
@@ -204,6 +205,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <canvas id="cv" width="1080" height="1440" role="img" aria-label="選んだ枠を重ねた写真のプレビュー"></canvas>
     <button type="button" class="sh-badge" id="shBadge" hidden>顔を加工中（タップで解除）</button>
     <div class="hint" id="hint" hidden>小さい写真をタップで入れ替え</div>
+  </div>
+
+  <div class="pastebar">
+    <input type="text" id="pasteBox" placeholder="メイン写真を貼り付け(Ctrl+V / 長押しでペースト)" aria-label="メイン写真を貼り付け" autocomplete="off">
+    <input type="text" id="subPasteBox" placeholder="自撮り写真を貼り付け(長押しでペースト)" aria-label="自撮り写真を貼り付け" autocomplete="off" style="display:none">
+    <p class="small" id="sampleNote">いまはサンプル画像です。下のボタンで選ぶか、コピーした写真を貼り付けると置き換わります。写真は端末内だけで処理されます。</p>
   </div>
 
   <p class="step">① 枠を選ぶ</p>
@@ -335,9 +342,6 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       <label class="check"><input type="checkbox" id="o-late">遅れて投稿(「2時間遅れ」を表示)</label>
       <label class="check"><input type="checkbox" id="o-flat" checked>加工なしに見える質感にする</label>
     </div>
-    <input type="text" id="pasteBox" placeholder="メイン写真を貼り付け(Ctrl+V / 長押しでペースト)" aria-label="メイン写真を貼り付け" autocomplete="off">
-    <input type="text" id="subPasteBox" placeholder="自撮り写真を貼り付け(長押しでペースト)" aria-label="自撮り写真を貼り付け" autocomplete="off" style="display:none">
-    <p class="small" id="sampleNote">いまはサンプル画像です。下のボタンで選ぶか、コピーした写真を貼り付けると置き換わります。写真は端末内だけで処理されます。</p>
   </div>
 
   <div id="msg" role="status"></div>
