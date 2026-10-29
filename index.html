@@ -2174,8 +2174,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       });
       if (vgw > 0) {
         var mA = P(61), mB = P(291), mw = dist(mA, mB), sg = mA.x < mB.x ? 1 : -1;
-        H.push({ free: true, x: mA.x, y: mA.y, r: mw * 0.32, dx: -sg * mw * 0.05 * vgw, dy: -mw * 0.17 * vgw });
-        H.push({ free: true, x: mB.x, y: mB.y, r: mw * 0.32, dx: sg * mw * 0.05 * vgw, dy: -mw * 0.17 * vgw });
+        H.push({ free: true, x: mA.x, y: mA.y, r: mw * 0.4, dx: -sg * mw * 0.12 * vgw, dy: -mw * 0.3 * vgw });
+        H.push({ free: true, x: mB.x, y: mB.y, r: mw * 0.4, dx: sg * mw * 0.12 * vgw, dy: -mw * 0.3 * vgw });
+        [205, 425].forEach(function (k) { var ck = P(k); H.push({ free: true, x: ck.x, y: ck.y, r: mw * 0.55, dx: 0, dy: -mw * 0.1 * vgw }); });
       }
       var trw = (v.tired || 0) / 100;
       if (trw > 0) [[468, 33, 133], [473, 362, 263]].forEach(function (a) {
