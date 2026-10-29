@@ -1527,11 +1527,23 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   function narrText() {
     var typed = $("narr").value.trim();
     if (typed) return typed;
-    var t = texts[state.cur] || {}, out = [];
-    ["tag", "place", "red", "blue"].forEach(function (k) { if (t[k]) out.push(plain(t[k])); });
-    if (t.time || t.suf) out.push(plain(t.time || "") + plain(t.suf || ""));
-    ["headline", "sub", "when"].forEach(function (k) { if (t[k]) out.push(plain(t[k]).replace(/\n/g, "")); });
-    return out.length ? out.join("。") + "。" : "";
+    return buildScript(false);
+  }
+  function speakAge(s) { return s.replace(/[(（](\d{1,3})[)）]/g, "、$1歳"); }
+  /* newsreader-style script made from the frame's texts; each line is a paragraph (a 2 s pause) */
+  function buildScript(greet) {
+    var t = texts[state.cur] || {}, parts = [];
+    function P(k) { return t[k] ? plain(t[k]).replace(/\n/g, "") : ""; }
+    function trim(x) { return x.replace(/[。、]$/, ""); }
+    if (greet) parts.push("こんばんは。" + (P("name") || "ニュース24") + "です。");
+    var lead = [P("tag"), P("place"), P("red"), P("blue")].filter(Boolean).map(trim);
+    if (lead.length) parts.push(lead.join("、") + "。");
+    var who = speakAge(P("time") + P("suf"));
+    if (who) parts.push("警察の調べによりますと、逮捕されたのは、" + who + "です。");
+    var body = trim(["headline", "sub", "when"].map(P).filter(Boolean).join("、"));
+    if (body) parts.push(body + (/疑い$/.test(body) ? "が持たれています。" : "。"));
+    if (parts.length > (greet ? 1 : 0)) parts.push("警察は、くわしい状況を調べています。");
+    return parts.join("\n");
   }
   var VV = [["11", "玄野武宏（男性・ニュース向き）"], ["13", "青山龍星（男性・低め）"], ["8", "春日部つむぎ（女性）"], ["2", "四国めたん（女性）"]];
   function vvName(id) { var n = ""; VV.forEach(function (p) { if (p[0] === id) n = p[1].replace(/（.*/, ""); }); return n; }
@@ -1691,17 +1703,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   $("narr-on").addEventListener("change", save);
   $("narrVoice").addEventListener("change", showNarrNote);
   /* script template in the usual newsreader order: greeting, lead, details, closing; a line break = a 2 s pause */
-  $("narrTemplate").onclick = function () {
-    var t = texts[state.cur] || {}, station = plain(t.name || "ニュース24"), lead = [t.tag, t.place].filter(Boolean).map(plain).join("、");
-    var who = (t.time || t.suf) ? plain(t.time || "") + plain(t.suf || "") : "";
-    var body = ["headline", "sub", "when"].map(function (k) { return t[k] ? plain(t[k]).replace(/\n/g, "") : ""; }).filter(Boolean).join("、");
-    var parts = ["こんばんは。" + station + "です。"];
-    if (lead) parts.push(lead + "。");
-    if (who) parts.push("警察によりますと、逮捕されたのは、" + who + "です。");
-    if (body) parts.push(body + "。");
-    parts.push("警察は、くわしい状況を調べています。");
-    $("narr").value = parts.join("\n"); save();
-  };
+  $("narrTemplate").onclick = function () { $("narr").value = buildScript(true); save(); };
   $("narrPlay").onclick = async function () {
     if (narrBusy || recording) return;
     narrBusy = true; narrForce = true; useBrowserFallback = false;
