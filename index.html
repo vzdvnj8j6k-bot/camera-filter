@@ -229,8 +229,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <label class="check"><input type="checkbox" id="narr-on" checked>「動きをプレビュー」「動画で保存」に合わせて読み上げる</label>
     <label class="check"><input type="checkbox" id="credit-on" checked>動画の右下に音声のクレジット（VOICEVOX:声の名前）を入れる</label>
     <textarea id="narr" rows="3" placeholder="読み上げる原稿（空欄なら画面の文字から自動で作ります）" aria-label="読み上げ原稿"></textarea>
-    <label class="row" for="narrRate" style="grid-template-columns: 5.5em minmax(0, 1fr) 3em">速さ<input type="range" id="narrRate" min="70" max="140" value="100"><output id="narrRateO">1.0</output></label>
+    <label class="row" for="narrRate" style="grid-template-columns: 5.5em minmax(0, 1fr) 3em">速さ<input type="range" id="narrRate" min="70" max="140" value="90"><output id="narrRateO">0.9</output></label>
     <label class="field"><span>声</span><select id="narrVoice" aria-label="読み上げの声"></select></label>
+    <button type="button" id="narrTemplate" class="seg-btn">ニュース原稿のひな形を入れる</button>
     <button type="button" id="narrPlay" class="seg-btn">読み上げだけ試す</button>
     <p class="small" id="narrNote">声はブラウザ内蔵の読み上げ機能で、無料です。端末によって声の種類が違います。</p>
     <p class="small" id="animNote">「逮捕報道」の枠では、テロップが画面に入ってくる動きと、ゆっくりした寄りが付きます。他の枠は、ざらつきとスクロール帯の動きだけです。</p>
@@ -1552,7 +1553,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   function showNarrNote() {
     var v = $("narrVoice").value;
     $("narrNote").textContent = v.indexOf("vv:") === 0
-      ? "声：VOICEVOX:" + vvName(v.slice(3)) + "（無料）。原稿の文字だけが外部サービス(tts.quest)に送られ、写真は送られません。この声は録画した動画にも入ります。SNSに投稿するときは「VOICEVOX:" + vvName(v.slice(3)) + "」とクレジットを書いてください。読み間違いは、原稿欄にひらがなで書くと直せます。"
+      ? "声：VOICEVOX:" + vvName(v.slice(3)) + "（無料）。原稿の文字だけが外部サービス(tts.quest)に送られ、写真は送られません。この声は録画した動画にも入ります。SNSに投稿するときは「VOICEVOX:" + vvName(v.slice(3)) + "」とクレジットを書いてください。読み間違いは、原稿欄にひらがなで書くと直せます。原稿の改行は約2秒の間（話題の切り替わり）になります。"
       : "ブラウザ内蔵の声です。棒読みや読み間違いが出やすく、録画した動画には入りません。";
   }
   fillVoices(); if (synth) synth.onvoiceschanged = fillVoices;
@@ -1590,7 +1591,22 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       .then(function (ab) { return new Promise(function (res, rej) { actx.decodeAudioData(ab, res, rej); }); })
       .then(function (buf) { vvCache[key] = buf; return buf; });
   }
+  /* a line break in the script is a change of topic: a 2 second pause; "続いて…" style openers get a longer pause before them */
   function splitNarr(text) {
+    var out = [];
+    String(text).split(/\n+/).forEach(function (para) {
+      para = para.trim();
+      if (!para) return;
+      var first = out.length;
+      splitClauses(para).forEach(function (t) {
+        if (/^(続いて|さて|次のニュース|次に|ここで)/.test(t) && out.length > 0) out[out.length - 1].pause = Math.max(out[out.length - 1].pause, 1.6);
+        out.push({ t: t, pause: pauseAfter(t) });
+      });
+      if (out.length > first) out[out.length - 1].pause = Math.max(out[out.length - 1].pause, 2.0);
+    });
+    return out;
+  }
+  function splitClauses(text) {
     text = text.replace(/([^、，,。！？!?\s「])「/g, "$1、「");
     var clauses = text.match(/[^。！？!?、，,\n]+[。！？!?、，,]?/g) || [text], chunks = [], carry = "";
     clauses.forEach(function (s) {
@@ -1613,7 +1629,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var parts = [], gaps = [], i, total = 0, chunks = splitNarr(text), sr = actx.sampleRate;
     if (onProg) onProg(0, chunks.length);
     for (i = 0; i < chunks.length; i++) {
-      var b = await vvChunk(chunks[i], speaker), g = Math.round(sr * pauseAfter(chunks[i]));
+      var b = await vvChunk(chunks[i].t, speaker), g = Math.round(sr * chunks[i].pause);
       if (i === chunks.length - 1) g = Math.round(sr * 0.2);
       parts.push(b); gaps.push(g); total += b.length + g;
       if (onProg) onProg(i + 1, chunks.length);
@@ -1674,6 +1690,18 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   $("narrVoice").addEventListener("change", save);
   $("narr-on").addEventListener("change", save);
   $("narrVoice").addEventListener("change", showNarrNote);
+  /* script template in the usual newsreader order: greeting, lead, details, closing; a line break = a 2 s pause */
+  $("narrTemplate").onclick = function () {
+    var t = texts[state.cur] || {}, station = plain(t.name || "ニュース24"), lead = [t.tag, t.place].filter(Boolean).map(plain).join("、");
+    var who = (t.time || t.suf) ? plain(t.time || "") + plain(t.suf || "") : "";
+    var body = ["headline", "sub", "when"].map(function (k) { return t[k] ? plain(t[k]).replace(/\n/g, "") : ""; }).filter(Boolean).join("、");
+    var parts = ["こんばんは。" + station + "です。"];
+    if (lead) parts.push(lead + "。");
+    if (who) parts.push("警察によりますと、逮捕されたのは、" + who + "です。");
+    if (body) parts.push(body + "。");
+    parts.push("警察は、くわしい状況を調べています。");
+    $("narr").value = parts.join("\n"); save();
+  };
   $("narrPlay").onclick = async function () {
     if (narrBusy || recording) return;
     narrBusy = true; narrForce = true; useBrowserFallback = false;
