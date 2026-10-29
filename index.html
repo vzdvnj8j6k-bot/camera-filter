@@ -997,7 +997,56 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     c.textAlign = "center";
   };
 
-  var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "clinic", "dual"];
+  /* Profile photo (host / hostess club style): the person cut out onto a white studio background, with a big name behind them,
+     a gold rank badge, a small profile card and a dark catch-phrase band. Choosing this frame switches the face filter on (model preset). */
+  F.profile = { name: "プロフィール写真(縦)", fields: { name: "名前（大きく背景に）", tag: "ランクの札", headline: "キャッチコピー", sub: "プロフィール1行目", when: "プロフィール2行目", place: "お店の名前" } };
+  F.profile.draw = function (c, S) {
+    var w = W, h = H, t = S.t, P = S.person, b, s, dw, dh, dx, dy;
+    var bg = c.createRadialGradient(w / 2, h * 0.42, 80, w / 2, h * 0.5, h * 0.9); bg.addColorStop(0, "#ffffff"); bg.addColorStop(1, "#e4e8f0");
+    c.fillStyle = bg; c.fillRect(0, 0, w, h);
+    c.textBaseline = "middle"; c.textAlign = "center";
+    if (t.name) {
+      fit(c, t.name, "900", SERIF, 330, w - 60, 100);
+      c.fillStyle = "rgba(208,176,118,.62)"; c.fillText(t.name, w / 2, h * 0.27);
+    }
+    if (P && P.canvas && P.box) {
+      b = P.box; s = Math.min(h * 0.9 / b.h, w * 1.05 / b.w); dw = b.w * s; dh = b.h * s; dx = (w - dw) / 2; dy = h - dh;
+      var fl = c.createRadialGradient(w / 2, h - 30, 10, w / 2, h - 30, w * 0.5); fl.addColorStop(0, "rgba(120,125,140,.35)"); fl.addColorStop(1, "rgba(120,125,140,0)");
+      c.fillStyle = fl; c.fillRect(0, h - 260, w, 260);
+      c.save(); c.shadowColor = "rgba(40,45,60,.3)"; c.shadowBlur = 36; c.shadowOffsetY = 8; c.filter = "contrast(1.03) saturate(1.04)";
+      c.drawImage(P.canvas, b.x, b.y, b.w, b.h, dx, dy, dw, dh); c.restore();
+    } else {
+      c.filter = "contrast(1.03)"; cover(c, S.pbase, 0, 0, w, h); c.filter = "none";
+      c.fillStyle = "rgba(255,255,255,.85)"; c.font = "700 30px " + SANS; c.fillText(P ? "人物を見つけられませんでした" : "人物を切り抜いています…", w / 2, h * 0.5);
+    }
+    /* rank badge (top right) */
+    if (t.tag) {
+      var bxr = w - 130, byr = 150, gg = c.createLinearGradient(bxr - 80, byr - 80, bxr + 80, byr + 80);
+      gg.addColorStop(0, "#f5dc9b"); gg.addColorStop(0.5, "#c99a45"); gg.addColorStop(1, "#8f6322");
+      c.save(); c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 16; c.shadowOffsetY = 4; c.fillStyle = gg; c.beginPath(); c.arc(bxr, byr, 84, 0, Math.PI * 2); c.fill(); c.restore();
+      c.strokeStyle = "rgba(255,255,255,.75)"; c.lineWidth = 4; c.beginPath(); c.arc(bxr, byr, 72, 0, Math.PI * 2); c.stroke();
+      fit(c, t.tag, "900", SANS, 52, 120, 24); c.fillStyle = "#fff"; c.fillText(t.tag, bxr, byr + 4);
+      c.font = "700 44px " + SANS; c.fillText("👑", bxr, byr - 104);
+    }
+    /* profile card (bottom left) */
+    if (t.sub || t.when) {
+      var cw = 640, chh = 150, cxp = 36, cyp = h - 330;
+      c.save(); c.shadowColor = "rgba(0,0,0,.25)"; c.shadowBlur = 14; c.fillStyle = "rgba(255,255,255,.88)"; rr(c, cxp, cyp, cw, chh, 20); c.fill(); c.restore();
+      c.strokeStyle = "#c99a45"; c.lineWidth = 3; rr(c, cxp + 8, cyp + 8, cw - 16, chh - 16, 14); c.stroke();
+      c.textAlign = "left"; c.fillStyle = "#2b2b3a";
+      if (t.sub) { fit(c, t.sub, "700", SANS, 38, cw - 60, 20); c.fillText(t.sub, cxp + 30, cyp + 54); }
+      if (t.when) { fit(c, t.when, "700", SANS, 38, cw - 60, 20); c.fillText(t.when, cxp + 30, cyp + 104); }
+      c.textAlign = "center";
+    }
+    /* dark band with the catch phrase and the shop name */
+    var bh = 150, bgd = c.createLinearGradient(0, h - bh, w, h); bgd.addColorStop(0, "#1c1b2e"); bgd.addColorStop(1, "#3a2a4a");
+    c.fillStyle = bgd; c.fillRect(0, h - bh, w, bh);
+    c.fillStyle = "#c99a45"; c.fillRect(0, h - bh, w, 5);
+    if (t.place) { fit(c, t.place, "700", SANS, 28, w - 80, 16); c.fillStyle = "#d8b26a"; c.fillText(t.place, w / 2, h - bh + 40); }
+    if (t.headline) { fit(c, t.headline, "900", SERIF, 52, w - 80, 26); c.fillStyle = "#fff"; c.fillText(t.headline, w / 2, h - bh + 96); }
+  };
+
+  var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "clinic", "profile", "dual"];
   var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue", "time2", "suf2"];
 
   /* ---------- state ---------- */
@@ -1007,6 +1056,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
     clinic: { headline: "整形顔フィルターを\n使ってみたｗ", place: "9.6万", tag2: "低く評価", when: "718", name: "@フレーム劇場", sub: "#整形顔フィルター #ネタ" },
+    profile: { name: "RYO", tag: "No.1", headline: "今夜、あなただけの時間を。", sub: "身長 178cm　血液型 O型", when: "趣味 ゴルフ・映画鑑賞", place: "CLUB FRAME THEATER" },
     newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定", time: "あなた", suf: "容疑者(19)", time2: "友人", suf2: "容疑者(20)" },
     led: { headline: "ようこそ 東京へ" },
     shibuya: { name: "SHIBUYA" },
@@ -1025,7 +1075,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newst: ["name", "tag", "place", "time", "headline"],
     newsd: ["tag", "headline", "time", "time2"],
-    clinic: ["headline", "place", "tag2", "when"]
+    clinic: ["headline", "place", "tag2", "when"],
+    profile: ["name", "tag", "headline"]
   };
   var RICH_KEYS = { news: ["headline"], newsw: ["headline"], newst: ["headline", "tag", "place", "red", "blue"] };
   function placeholder(k) { return "　　　" + new Array(FIELD_KEYS.indexOf(k) + 2).join("​"); }
@@ -1035,7 +1086,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     Object.keys(t).forEach(function (k) { if (typeof t[k] === "string" && rk.indexOf(k) < 0) t[k] = plain(t[k]); });
     if (KEEP[id]) KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
     var shapeReady = shaped.canvas && shaped.src === state.main;
-    return { orig: state.main, shp: shapeReady ? shaped.canvas : null, main: cutReady ? poster.canvas : (shapeReady ? shaped.canvas : state.main), sub: state.sub, t: t, o: opts, a: animSec };
+    return { orig: state.main, shp: shapeReady ? shaped.canvas : null, pbase: shapeReady ? shaped.canvas : state.main, person: (profCut && profCut.src === (shapeReady ? shaped.canvas : state.main)) ? profCut : null, main: cutReady ? poster.canvas : (shapeReady ? shaped.canvas : state.main), sub: state.sub, t: t, o: opts, a: animSec };
   }
 
   /* TV look + animation */
@@ -1108,6 +1159,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = "none"; ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.restore();
     try { F[id].draw(ctx, S(id)); } finally { delete ctx.fillText; delete ctx.strokeText; }
     resolveRegionKeys();
+    if (state.cur === "profile") profileSync();
     var badgeOn = !!(shaped.on && shaped.canvas && shaped.src === state.main);
     if ($("shBadge").hidden === badgeOn) $("shBadge").hidden = !badgeOn;
     if (opts.scrollOn && isNewsFrame(id)) {
@@ -1915,31 +1967,37 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     cutBusy = false; poster.on = false; $("c-on").checked = false;
     cutMsg(text); redraw();
   }
-  function runCut() {
-    if (cutBusy) return;
-    if (!have.main) { cutFailed("先に、ご自身の写真を選ぶか貼り付けてください。"); return; }
-    var src = state.main;
-    cutBusy = true;
-    cutMsg("人物を切り抜いています…(初回はAIの読み込みで少し時間がかかります)");
-    getSegmenter().then(function (seg) {
+  /* person cut-out as a transparent-background canvas (long side at most 1024 px) */
+  function segmentPerson(src) {
+    return getSegmenter().then(function (seg) {
       var sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
-      var k = Math.min(1, 1024 / Math.max(sw, sh));
+      var k = Math.min(1, 1536 / Math.max(sw, sh));
       var base = document.createElement("canvas");
       base.width = Math.round(sw * k); base.height = Math.round(sh * k);
       base.getContext("2d").drawImage(src, 0, 0, base.width, base.height);
       var res = seg.segment(base);
       var mask = res.categoryMask, arr = mask.getAsUint8Array(), mw = mask.width, mh = mask.height;
       // this model labels the person 0 and everything else non-zero
-      var pv = 0, i;
-      var cc = document.createElement("canvas"); cc.width = mw; cc.height = mh;
-      var cx = cc.getContext("2d");
-      cx.drawImage(src, 0, 0, mw, mh);
-      var id = cx.getImageData(0, 0, mw, mh), d = id.data;
-      for (i = 0; i < arr.length; i++) d[i * 4 + 3] = (arr[i] ? 1 : 0) === pv ? 255 : 0;
-      cx.putImageData(id, 0, 0);
-      var sm = document.createElement("canvas"); sm.width = mw; sm.height = mh;
-      var sx = sm.getContext("2d"); sx.filter = "blur(1.2px)"; sx.drawImage(cc, 0, 0);
+      var i, mc = document.createElement("canvas"); mc.width = mw; mc.height = mh;
+      var mx = mc.getContext("2d"), mid = mx.createImageData(mw, mh), md = mid.data;
+      for (i = 0; i < arr.length; i++) { md[i * 4] = md[i * 4 + 1] = md[i * 4 + 2] = 255; md[i * 4 + 3] = (arr[i] ? 1 : 0) === 0 ? 255 : 0; }
+      mx.putImageData(mid, 0, 0);
       try { mask.close(); } catch (e) {}
+      /* full-resolution colours, cut with the soft, smoothly enlarged mask */
+      var m2 = document.createElement("canvas"); m2.width = base.width; m2.height = base.height;
+      var m2x = m2.getContext("2d"); m2x.imageSmoothingEnabled = true; m2x.imageSmoothingQuality = "high"; m2x.filter = "blur(2.4px)"; m2x.drawImage(mc, 0, 0, base.width, base.height);
+      var sm = document.createElement("canvas"); sm.width = base.width; sm.height = base.height;
+      var sx = sm.getContext("2d"); sx.drawImage(base, 0, 0); sx.globalCompositeOperation = "destination-in"; sx.drawImage(m2, 0, 0);
+      return sm;
+    });
+  }
+  function runCut() {
+    if (cutBusy) return;
+    if (!have.main) { cutFailed("先に、ご自身の写真を選ぶか貼り付けてください。"); return; }
+    var src = state.main;
+    cutBusy = true;
+    cutMsg("人物を切り抜いています…(初回はAIの読み込みで少し時間がかかります)");
+    segmentPerson(src).then(function (sm) {
       cut = { src: src, canvas: sm };
       cutBusy = false;
       if (state.main !== src) { if (poster.on) runCut(); return; }
@@ -1948,6 +2006,23 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }).catch(function () {
       cutFailed("切り抜きに失敗しました。ネット接続を確認して、もう一度お試しください。");
     });
+  }
+  /* profile-photo frame: the person (taken from the face-filtered photo when the filter is on) on a white studio background */
+  var profCut = null, profBusy = false;
+  function profileBase() { return (shaped.canvas && shaped.src === state.main) ? shaped.canvas : state.main; }
+  function profileSync() {
+    if (profBusy || !have.main) return;
+    var base = profileBase();
+    if (profCut && profCut.src === base) return;
+    if (shaped.on && !(shaped.canvas && shaped.src === state.main) && !shaped.failed) return;
+    profBusy = true;
+    segmentPerson(base).then(function (sm) {
+      var w = sm.width, h = sm.height, d = sm.getContext("2d").getImageData(0, 0, w, h).data, x0 = w, y0 = h, x1 = 0, y1 = 0, x, y;
+      for (y = 0; y < h; y += 2) for (x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] > 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      var ok = x1 > x0 && y1 > y0;
+      profCut = { src: base, canvas: ok ? sm : null, box: ok ? { x: Math.max(0, x0 - 4), y: Math.max(0, y0 - 4), w: Math.min(w, x1 - x0 + 8), h: Math.min(h, y1 - y0 + 8) } : null };
+      profBusy = false; redraw();
+    }).catch(function () { profCut = { src: base, canvas: null, box: null }; profBusy = false; redraw(); });
   }
   function buildPoster() {
     if (!cut) return;
@@ -2129,20 +2204,21 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   }
   async function shapeRun() {
     var seq = ++shapeSeq;
+    shaped.failed = false;
     if (!shaped.on || !state.main) return;
     setShapeMsg("顔を探しています…（初回は、AIの部品の読み込みに十数秒かかります）");
     try {
       var info = await detectFaces(state.main);
       if (seq !== shapeSeq) return;
       if (!info.faces.length) {
-        shaped.canvas = null; shaped.src = null; redraw();
+        shaped.canvas = null; shaped.src = null; shaped.failed = true; redraw();
         setShapeMsg("顔が見つかりませんでした。正面の顔がはっきり写った写真でお試しください。");
         return;
       }
       shaped.canvas = shapeWarp(skinPass(info.canvas, info.faces), info.faces); shaped.src = state.main;
       setShapeMsg(info.faces.length + "人の顔を変形しました。スライダーで強さを調整できます。"); redraw();
     } catch (e) {
-      console.warn("face reshape failed", e);
+      console.warn("face reshape failed", e); shaped.failed = true; redraw();
       setShapeMsg("顔を見つけるAIを読み込めませんでした。通信状況をご確認ください。");
     }
   }
@@ -2334,6 +2410,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   /* the clinic frame needs the filtered photo: switch the filter on when it is chosen and off again when leaving, unless the user took over */
   function clinicFilterSync(id) {
     if (id === "clinic") { if (!shaped.on) { shapeAuto = true; applyShapePreset("plastic"); } }
+    else if (id === "profile") { if (!shaped.on) { shapeAuto = true; applyShapePreset("model"); } }
     else if (shapeAuto) { shapeAuto = false; $("sh-on").checked = false; $("sh-on").dispatchEvent(new Event("change")); }
   }
 
