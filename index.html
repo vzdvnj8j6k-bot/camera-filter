@@ -444,17 +444,21 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (sp[1]) { c.font = "900 " + s2 + "px " + SERIF; outlined(c, sp[1], w1 + w2a, y, 6, "#fff"); }
     c.restore(); c.textAlign = "left";
   }
-  function headLines(s) {
-    var a = String(s || "").split("\n").filter(function (x) { return x.length; });
-    return a.length ? a : [""];
+  /* split coloured text into lines (a colour span may run across a line break) */
+  function richLines(s) {
+    var lines = [[]];
+    richChars(s).forEach(function (rc) { if (rc.ch === "\n") lines.push([]); else lines[lines.length - 1].push(rc); });
+    var a = lines.filter(function (l) { return l.length; });
+    return a.length ? a : [[]];
   }
+  function headLines(s) { return richLines(s); }
   /* draws 1+ headline lines centred on cy; with several lines the font size shrinks so every line fits */
   function drawHeadLines(c, lines, x, cy, maxW, size, lead) {
     var n = lines.length, sz = n > 1 ? Math.round(size * 0.86) : size, fs = sz;
     var base = c.fillStyle;
-    lines.forEach(function (l) { fs = Math.min(fs, fit(c, plain(l), "900", SANS, sz, maxW, 20)); });
+    lines.forEach(function (l) { fs = Math.min(fs, fit(c, charsText(l), "900", SANS, sz, maxW, 20)); });
     c.font = "900 " + fs + "px " + SANS;
-    lines.forEach(function (l, k) { drawRich(c, richChars(l), x, cy + (k - (n - 1) / 2) * lead, base, true); });
+    lines.forEach(function (l, k) { drawRich(c, l, x, cy + (k - (n - 1) / 2) * lead, base, true); });
   }
   function splitSuf(s) {
     var i = s.search(/[(（]/);
@@ -865,9 +869,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 
     c.font = "700 52px " + SANS;
     var lines2 = [], cur2;
-    String(t.headline || "").split("\n").forEach(function (par) {
+    richLines(t.headline).forEach(function (par) {
       cur2 = [];
-      richChars(par).forEach(function (rc) {
+      par.forEach(function (rc) {
         if (cur2.length && c.measureText(charsText(cur2) + rc.ch).width > 880) { lines2.push(cur2); cur2 = [rc]; } else cur2.push(rc);
       });
       if (cur2.length) lines2.push(cur2);
@@ -1346,9 +1350,38 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     editor = document.createElement("div"); editor.className = "edit-panel";
     editor.innerHTML = '<div class="ep-in"><div class="ep-top"><span class="ep-label"></span><button type="button" class="ep-done">完了</button></div><div class="ep-colors" role="group" aria-label="文字の色"></div><input type="text" class="ep-input" autocomplete="off"></div>';
     var cbox = editor.querySelector(".ep-colors");
+    var rich = (RICH_KEYS[state.cur] || []).indexOf(k) >= 0, typing = null, hint = null, skipNext = false;
+    function colorName(hex) { var n = "標準"; Object.keys(RICH).forEach(function (x) { if (RICH[x] === hex) n = x; }); return n; }
+    function updateHint() {
+      if (hint) hint.textContent = "いまの色：" + colorName(typing) + "。この色で続けて打てます。すでにある文字の色を変えるときは、文字を選んでから色を押してください（⟦赤:…⟧と表示されますが、画像には出ません）。";
+    }
     function paintSwatches() {
-      var cur = (colors[state.cur] || {})[k] || "";
+      var cur = rich ? (typing || "") : ((colors[state.cur] || {})[k] || "");
       Array.prototype.forEach.call(cbox.children, function (b) { b.classList.toggle("on", (b.getAttribute("data-c") || "") === cur); });
+    }
+    /* if the caret sits inside a coloured span of another colour, step out of it so the next characters get the new colour */
+    function leaveSpan() {
+      var v = inp.value, pos = inp.selectionStart, m;
+      RICH_RE.lastIndex = 0;
+      while ((m = RICH_RE.exec(v))) {
+        var s = m.index, e = s + m[0].length;
+        if (pos >= s + 3 && pos <= e - 1) { if (RICH[m[1]] !== typing) inp.setSelectionRange(e, e); break; }
+      }
+    }
+    /* characters typed while a colour is chosen are wrapped in that colour (compared against the value before the edit) */
+    function processTyping(prev) {
+      var cur = inp.value;
+      if (!rich || !typing || cur === prev) return;
+      var p = 0, s = 0;
+      while (p < prev.length && p < cur.length && prev[p] === cur[p]) p++;
+      while (s < prev.length - p && s < cur.length - p && prev[prev.length - 1 - s] === cur[cur.length - 1 - s]) s++;
+      var ins = cur.slice(p, cur.length - s);
+      if (!ins || /[⟦⟧]/.test(ins)) return;
+      var before = cur.slice(0, p), after = cur.slice(cur.length - s), m;
+      RICH_RE.lastIndex = 0;
+      while ((m = RICH_RE.exec(cur))) { if (p >= m.index + 3 && p <= m.index + m[0].length - 1) return; }
+      var name = colorName(typing), out = before + "⟦" + name + ":" + ins + "⟧" + after, caret = before.length + 3 + ins.length;
+      inp.value = out; inp.setSelectionRange(caret, caret);
     }
     [["", "標準"], ["#ffffff", "白"], ["#111111", "黒"], ["#e0141e", "赤"], ["#1747c8", "青"], ["#ffd000", "黄"], ["#12b886", "緑"], ["#ff3d9a", "ピンク"]].forEach(function (p) {
       var b = document.createElement("button");
@@ -1356,7 +1389,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       if (p[0]) b.style.background = p[0]; else b.textContent = "標準";
       b.addEventListener("mousedown", function (ev) { ev.preventDefault(); });
       b.addEventListener("click", function () {
-        if ((RICH_KEYS[state.cur] || []).indexOf(k) >= 0 && inp && inp.selectionStart !== inp.selectionEnd) { applyRichSel(inp, p[0]); return; }
+        if (rich && inp && inp.selectionStart !== inp.selectionEnd) { skipNext = true; applyRichSel(inp, p[0]); return; }
+        if (rich) { typing = p[0] || null; leaveSpan(); paintSwatches(); updateHint(); inp.focus(); return; }
         colors[state.cur] = colors[state.cur] || {};
         if (p[0]) colors[state.cur][k] = p[0]; else delete colors[state.cur][k];
         paintSwatches(); redraw();
@@ -1364,10 +1398,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       cbox.appendChild(b);
     });
     paintSwatches();
-    if ((RICH_KEYS[state.cur] || []).indexOf(k) >= 0) {
-      var hint = document.createElement("div"); hint.className = "ep-hint";
-      hint.textContent = "文字を選んでから色を押すと、その部分だけ色が変わります（⟦赤:…⟧と表示されます）。何も選ばずに押すと、全体の色が変わります。";
-      cbox.parentNode.insertBefore(hint, cbox.nextSibling);
+    if (rich) {
+      hint = document.createElement("div"); hint.className = "ep-hint";
+      cbox.parentNode.insertBefore(hint, cbox.nextSibling); updateHint();
     }
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
@@ -1377,8 +1410,16 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       ta.className = "ep-input"; ta.rows = 2; inp.parentNode.replaceChild(ta, inp); inp = ta;
     }
     inp.value = texts[state.cur][k] || ""; inp.placeholder = multi ? label + "（改行できます）" : label; inp.setAttribute("aria-label", label);
-    inp.addEventListener("input", function () {
+    var prevVal = inp.value, baseVal = prevVal, composing = false;
+    function syncText() {
       texts[state.cur][k] = inp.value; $("f-" + k).value = inp.value; redraw(); updateHl(); buildChips();
+    }
+    inp.addEventListener("compositionstart", function () { composing = true; baseVal = prevVal; });
+    inp.addEventListener("compositionend", function () { composing = false; processTyping(baseVal); prevVal = inp.value; syncText(); });
+    inp.addEventListener("input", function (ev) {
+      if (composing || ev.isComposing) { syncText(); return; }
+      if (skipNext) { skipNext = false; prevVal = inp.value; syncText(); return; }
+      processTyping(prevVal); prevVal = inp.value; syncText();
     });
     inp.addEventListener("keydown", function (ev) { if (ev.key === "Escape" || (ev.key === "Enter" && !multi)) closeEditor(); });
     editor.querySelector(".ep-done").addEventListener("click", closeEditor);
