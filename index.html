@@ -176,6 +176,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   .app > :not(header):not(.shot) { grid-column: 2; }
 }
 .pastebar { display: grid; gap: 8px; }
+.pastebar input[type="text"] { border: 1.5px dashed #3a3a3c; background: transparent; }
 </style>
 
 
@@ -208,7 +209,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   </div>
 
   <div class="pastebar">
-    <input type="text" id="pasteBox" placeholder="メイン写真を貼り付け(Ctrl+V / 長押しでペースト)" aria-label="メイン写真を貼り付け" autocomplete="off">
+    <input type="text" id="pasteBox" placeholder="📋 ここに写真を貼り付け(Ctrl+V / 長押し)※文字は入力できません" aria-label="メイン写真を貼り付け" autocomplete="off">
     <input type="text" id="subPasteBox" placeholder="自撮り写真を貼り付け(長押しでペースト)" aria-label="自撮り写真を貼り付け" autocomplete="off" style="display:none">
     <p class="small" id="sampleNote">いまはサンプル画像です。下のボタンで選ぶか、コピーした写真を貼り付けると置き換わります。写真は端末内だけで処理されます。</p>
   </div>
@@ -2719,6 +2720,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     else if (id === "sleeper") { shapeAuto = true; applyShapePreset("vigor"); }
     else if (shapeAuto) { shapeAuto = false; $("sh-on").checked = false; $("sh-on").dispatchEvent(new Event("change")); }
   }
+
+  /* these boxes only receive pasted pictures; typed text would go nowhere, so say so instead of silently keeping it */
+  ["pasteBox", "subPasteBox"].forEach(function (id) {
+    $(id).addEventListener("input", function () {
+      this.value = "";
+      $("msg").textContent = "ここには写真を貼り付けます。文字を変えるときは、画像の文字をタップするか、下の「文字」タブを使ってください。";
+    });
+  });
 
   /* paste: an image on the clipboard becomes the main photo (in the dual frame, the second one goes to the selfie slot) */
   document.addEventListener("paste", function (e) {
