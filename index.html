@@ -733,7 +733,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   };
 
   /* Arrest-report layout: white headline panel with blue top bar (top right), white name plate with a small note beside it, two-line black caption box (bottom left). */
-  F.newst = { name: "逮捕報道(横長)", size: [1280, 720], fields: { name: "左上の局名", tag: "右上の見出し(1行目)", place: "右上の見出し(2行目)", red: "右上の赤文字", blue: "右上の青文字", time: "名前", suf: "名前の後ろ", ticker: "名前の横の小さな文字", headline: "黒い囲み(1行目)", sub: "黒い囲み(2行目)" } };
+  F.newst = { name: "逮捕報道(横長)", size: [1280, 720], fields: { name: "左上の局名", tag: "右上の見出し(1行目)", place: "右上の見出し(2行目)", red: "右上の赤文字", blue: "右上の青文字", time: "名前", suf: "名前の後ろ", ticker: "名前の横の小さな文字", headline: "黒い囲み(自動で折り返し)" } };
   F.newst.draw = function (c, S) {
     var w = 1280, h = 720, t = S.t, i;
     c.filter = "contrast(1.05) saturate(1.05)"; cover(c, S.main, 0, 0, w, h); c.filter = "none";
@@ -767,7 +767,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       });
     }
 
-    var lines2 = [t.headline || "", t.sub || ""].filter(function (s) { return s; });
+    c.font = "700 52px " + SANS;
+    var lines2 = [], cur2 = "";
+    Array.from(t.headline || "").forEach(function (ch) {
+      if (cur2 && c.measureText(cur2 + ch).width > 880) { lines2.push(cur2); cur2 = ch; } else cur2 += ch;
+    });
+    if (cur2) lines2.push(cur2);
     var bottom = h - 34, bh = lines2.length ? 22 + lines2.length * 66 : 0, by = bottom - bh;
     var maxw = 0;
     lines2.forEach(function (s) { fit(c, s, "700", SANS, 52, 1000, 28); maxw = Math.max(maxw, c.measureText(s).width); });
@@ -829,7 +834,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     news: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
-    newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し", sub: "友人に見せるなどした疑い" },
+    newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し友人に見せるなどした疑い" },
     newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定" },
     led: { headline: "ようこそ 東京へ" },
     shibuya: { name: "SHIBUYA" },
@@ -1130,15 +1135,21 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       k = FIELD_KEYS[n]; v = t[k];
       if (!(k in fl) || k === "scroll" || !v) continue;
       if (s === v) return k;
-      if (!loose && v.length >= 2 && s.indexOf(v) >= 0) loose = k;
+      if (!loose && v.length >= 2 && (s.indexOf(v) >= 0 || (s.length >= 2 && v.indexOf(s) >= 0 && v.length > s.length))) loose = k;
     }
     return loose;
   }
   /* editing panel: docked above the keyboard, with a yellow frame around the text being edited on the image */
   var editor = null, hl = null, editKey = null, vv = window.visualViewport;
   function findRegion(k) {
-    for (var n = regions.length - 1; n >= 0; n--) if (keyForText(regions[n].text) === k) return regions[n];
-    return null;
+    var u = null;
+    regions.forEach(function (r) {
+      if (keyForText(r.text) !== k) return;
+      if (!u) { u = { x: r.x, y: r.y, w: r.w, h: r.h }; return; }
+      var x2 = Math.max(u.x + u.w, r.x + r.w), y2 = Math.max(u.y + u.h, r.y + r.h);
+      u.x = Math.min(u.x, r.x); u.y = Math.min(u.y, r.y); u.w = x2 - u.x; u.h = y2 - u.y;
+    });
+    return u;
   }
   function updateHl() {
     if (!hl) return;
