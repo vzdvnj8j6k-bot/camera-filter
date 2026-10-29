@@ -116,6 +116,13 @@ input[type="file"] { display: none; }
 #msg { text-align: center; font-size: 0.78rem; color: var(--muted); min-height: 1.2em; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .shutter i { transition: none; } }
+#fieldsSheet.collapsed .field, #fieldsSheet.collapsed .check { display: none; }
+.seg-btn { font-family: inherit; font-size: 0.82rem; padding: 10px 12px; border-radius: 10px; border: 0; background: var(--surface-2); color: var(--fg); cursor: pointer; }
+.inline-edit {
+  position: absolute; z-index: 8; height: 44px; font-family: var(--font-body); font-size: 16px; font-weight: 700;
+  padding: 0 12px; border: 2px solid #2b7bff; border-radius: 10px; background: #fff; color: #111;
+  box-shadow: 0 4px 18px rgba(0,0,0,.55);
+}
 #miniCv {
   position: fixed; top: 10px; right: max(10px, env(safe-area-inset-right, 10px));
   width: 72px; height: 96px; border-radius: 10px; z-index: 20;
@@ -152,8 +159,9 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
 
   <div class="picker" id="picker" role="group" aria-label="枠を選ぶ"></div>
 
-  <div class="sheet" id="fieldsSheet">
-    <p class="small">枠に入る文字は、ここで自由に書き換えられます。写真をタップしても、ここに移動します。</p>
+  <div class="sheet collapsed" id="fieldsSheet">
+    <p class="small">画像の文字を直接タップすると、その場で書き換えられます。空の項目などはここから入力できます。</p>
+    <button type="button" id="toggleFields" class="seg-btn">文字欄をすべて表示</button>
     <label class="field" id="r-name"><span id="l-name">名前</span><input type="text" id="f-name"></label>
     <label class="field" id="r-tag"><span id="l-tag">ラベル</span><input type="text" id="f-tag"></label>
     <label class="field" id="r-headline"><span id="l-headline">見出し</span><input type="text" id="f-headline"></label>
@@ -786,9 +794,23 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
     return { main: cutReady ? poster.canvas : state.main, sub: state.sub, t: texts[id], o: opts };
   }
 
+  /* on-image editing: remember where each text is drawn so a tap can open an editor on top of it */
+  var regions = [], origFillText = CanvasRenderingContext2D.prototype.fillText;
+  function recordText(txt, x, y) {
+    try {
+      var c = this, s = String(txt), size = parseFloat((c.font.match(/(\d+(?:\.\d+)?)px/) || [0, 30])[1]);
+      var wd = c.measureText(s).width, al = c.textAlign, bl = c.textBaseline;
+      var left = al === "center" ? x - wd / 2 : (al === "right" || al === "end") ? x - wd : x;
+      var top = bl === "middle" ? y - size / 2 : bl === "top" ? y : (bl === "bottom" || bl === "ideographic") ? y - size : y - size * 0.85;
+      var m = c.getTransform(), xa = m.a * left + m.e, xb = m.a * (left + wd) + m.e, ya = m.d * top + m.f, yb = m.d * (top + size) + m.f;
+      regions.push({ text: s, x: Math.min(xa, xb), y: Math.min(ya, yb), w: Math.abs(xb - xa), h: Math.abs(yb - ya) });
+    } catch (e) {}
+    return origFillText.apply(this, arguments);
+  }
   function render() {
     var id = state.cur;
-    F[id].draw(ctx, S(id));
+    regions = []; ctx.fillText = recordText;
+    try { F[id].draw(ctx, S(id)); } finally { delete ctx.fillText; }
     if (opts.scrollOn && isNewsFrame(id)) {
       var sz = F[id].size || [W, H];
       drawScrollingTicker(ctx, sz[0], sz[1]);
@@ -1004,18 +1026,54 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
     var px = (e.clientX - r.left) / r.width * W, py = (e.clientY - r.top) / r.height * H;
     return px >= insetRect.x && px <= insetRect.x + insetRect.w && py >= insetRect.y && py <= insetRect.y + insetRect.h;
   }
+  function keyForText(s) {
+    var t = texts[state.cur], fl = F[state.cur].fields, loose = null, n, k, v;
+    if (t.time && t.suf && s === t.time + t.suf && "time" in fl) return "time";
+    for (n = 0; n < FIELD_KEYS.length; n++) {
+      k = FIELD_KEYS[n]; v = t[k];
+      if (!(k in fl) || k === "scroll" || !v) continue;
+      if (s === v) return k;
+      if (!loose && v.length >= 2 && s.indexOf(v) >= 0) loose = k;
+    }
+    return loose;
+  }
+  var editor = null;
+  function closeEditor() { if (editor) { var e = editor; editor = null; if (e.parentNode) e.parentNode.removeChild(e); } }
+  function openEditor(k, r) {
+    closeEditor();
+    var rect = cv.getBoundingClientRect(), shot = cv.parentNode.getBoundingClientRect(), sx = rect.width / cv.width;
+    var el = document.createElement("input");
+    el.type = "text"; el.className = "inline-edit"; el.autocomplete = "off";
+    el.value = texts[state.cur][k] || ""; el.placeholder = F[state.cur].fields[k];
+    el.setAttribute("aria-label", F[state.cur].fields[k]);
+    var wpx = Math.min(Math.max(r.w * sx + 28, 200), rect.width - 8);
+    var lpx = Math.min(Math.max(rect.left - shot.left + r.x * sx - 6, rect.left - shot.left + 4), rect.left - shot.left + rect.width - wpx - 4);
+    var tpx = Math.max(rect.top - shot.top + r.y * sx - 6, rect.top - shot.top + 4);
+    el.style.cssText = "left:" + lpx + "px;top:" + tpx + "px;width:" + wpx + "px";
+    el.addEventListener("input", function () {
+      texts[state.cur][k] = el.value; $("f-" + k).value = el.value; redraw();
+    });
+    el.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === "Escape") el.blur(); });
+    el.addEventListener("blur", function () { if (editor === el) closeEditor(); });
+    cv.parentNode.appendChild(el); editor = el;
+    el.focus(); el.select();
+  }
   cv.addEventListener("click", function (e) {
     if (hitInset(e)) { swap(); return; }
-    var order = ["headline", "name", "sub", "ticker", "time"];
-    for (var n = 0; n < order.length; n++) {
-      var el = $("f-" + order[n]);
-      if (!el.closest(".field").hidden) {
-        el.scrollIntoView({ behavior: "smooth", block: "center" });
-        el.focus({ preventScroll: true }); el.select();
-        break;
+    var rect = cv.getBoundingClientRect(), px = (e.clientX - rect.left) / rect.width * cv.width, py = (e.clientY - rect.top) / rect.height * cv.height, pad = 14, n, r, k;
+    for (n = regions.length - 1; n >= 0; n--) {
+      r = regions[n];
+      if (px >= r.x - pad && px <= r.x + r.w + pad && py >= r.y - pad && py <= r.y + r.h + pad) {
+        k = keyForText(r.text);
+        if (k) { openEditor(k, r); return; }
       }
     }
+    closeEditor();
   });
+  $("toggleFields").onclick = function () {
+    var c = $("fieldsSheet").classList.toggle("collapsed");
+    $("toggleFields").textContent = c ? "文字欄をすべて表示" : "文字欄を閉じる";
+  };
   cv.addEventListener("mousemove", function (e) { cv.style.cursor = hitInset(e) ? "pointer" : "default"; });
 
   $("reset").onclick = function () {
