@@ -861,8 +861,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     c.fillStyle = "#2a2d33";
     var cap = (t.tag || "") + (t.sub ? "\n" + t.sub : ""), cl = cap.split("\n").filter(function (x) { return x.trim(); }).slice(0, 2);
     cl.forEach(function (ln, i) {
-      fit(c, ln, "700", SANS, 25, w - cx - 40, 14);
-      c.fillText(ln, cx, cl.length === 1 ? 596 : 580 + i * 29);
+      fit(c, ln, "700", SANS, cl.length === 1 ? 38 : 33, w - cx - 40, 16);
+      c.fillText(ln, cx, cl.length === 1 ? 596 : 576 + i * 37);
     });
 
     // blue headline banner
