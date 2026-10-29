@@ -117,6 +117,10 @@ input[type="file"] { display: none; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .shutter i { transition: none; } }
 #fieldsSheet.collapsed .field, #fieldsSheet.collapsed .check { display: none; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: inherit; font-size: 0.8rem; padding: 9px 12px; border-radius: 999px; border: 1.5px solid #3a3a3c; background: var(--surface-2); color: var(--fg); cursor: pointer; }
+.chip.empty { border-style: dashed; color: var(--muted); }
+.chip.on { border-color: #ffd000; color: #ffd000; }
 .seg-btn { font-family: inherit; font-size: 0.82rem; padding: 10px 12px; border-radius: 10px; border: 0; background: var(--surface-2); color: var(--fg); cursor: pointer; }
 .edit-hl {
   position: absolute; z-index: 7; pointer-events: none; border: 3px solid #ffd000; border-radius: 8px;
@@ -172,6 +176,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 
   <div class="sheet collapsed" id="fieldsSheet">
     <p class="small">画像の文字を直接タップすると、その場で書き換えられます。空の項目などはここから入力できます。</p>
+    <div id="fieldChips" class="chips" role="group" aria-label="編集する項目"></div>
     <button type="button" id="toggleFields" class="seg-btn">文字欄をすべて表示</button>
     <label class="field" id="r-name"><span id="l-name">名前</span><input type="text" id="f-name"></label>
     <label class="field" id="r-tag"><span id="l-tag">ラベル</span><input type="text" id="f-tag"></label>
@@ -899,6 +904,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       row.hidden = !(k in fl);
       if (k in fl) { $("l-" + k).textContent = fl[k]; $("f-" + k).value = texts[id][k] || ""; }
     });
+    closeEditor();
     $("opt-led").hidden = id !== "led";
     $("opt-dual").hidden = id !== "dual";
     $("subPasteBox").style.display = id === "dual" ? "" : "none";
@@ -921,7 +927,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   FIELD_KEYS.forEach(function (k) {
     $("f-" + k).addEventListener("input", function (e) {
       texts[state.cur][k] = e.target.value;
-      redraw();
+      redraw(); buildChips();
     });
   });
 
@@ -1077,10 +1083,23 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
     updateHl();
   }
+  function buildChips() {
+    var box = $("fieldChips"), fl = F[state.cur].fields, t = texts[state.cur];
+    box.innerHTML = "";
+    FIELD_KEYS.forEach(function (k) {
+      if (!(k in fl) || k === "scroll") return;
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip" + (t[k] ? "" : " empty") + (k === editKey ? " on" : "");
+      b.textContent = (t[k] ? "" : "＋ ") + fl[k];
+      b.addEventListener("click", function () { openEditor(k); });
+      box.appendChild(b);
+    });
+  }
   function closeEditor() {
     if (editor) { editor.remove(); editor = null; }
     if (hl) { hl.remove(); hl = null; }
     editKey = null;
+    buildChips();
     if (vv) { vv.removeEventListener("resize", placePanel); vv.removeEventListener("scroll", placePanel); }
   }
   function openEditor(k) {
@@ -1094,13 +1113,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var inp = editor.querySelector(".ep-input");
     inp.value = texts[state.cur][k] || ""; inp.placeholder = label; inp.setAttribute("aria-label", label);
     inp.addEventListener("input", function () {
-      texts[state.cur][k] = inp.value; $("f-" + k).value = inp.value; redraw(); updateHl();
+      texts[state.cur][k] = inp.value; $("f-" + k).value = inp.value; redraw(); updateHl(); buildChips();
     });
     inp.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === "Escape") closeEditor(); });
     editor.querySelector(".ep-done").addEventListener("click", closeEditor);
     document.body.appendChild(editor);
     if (vv) { vv.addEventListener("resize", placePanel); vv.addEventListener("scroll", placePanel); }
     inp.focus(); inp.select();
+    buildChips();
     placePanel(); setTimeout(placePanel, 250); setTimeout(placePanel, 600);
   }
   cv.addEventListener("click", function (e) {
