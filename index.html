@@ -780,6 +780,40 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
   };
 
+  /* TV interview lower third: white name plate with a two-line caption, blue headline banner below. */
+  F.intv = { name: "インタビュー(横長)", size: [1280, 720], fields: { name: "名前", tag: "肩書き(1行目)", sub: "肩書き(2行目)", headline: "青い帯の見出し" } };
+  F.intv.draw = function (c, S) {
+    var t = S.t, w = 1280, h = 720;
+    c.filter = "contrast(1.04) saturate(1.05)"; cover(c, S.main, 0, 0, w, h); c.filter = "none";
+    var sh = c.createLinearGradient(0, 480, 0, 560);
+    sh.addColorStop(0, "rgba(0,0,0,0)"); sh.addColorStop(1, "rgba(0,0,0,.28)");
+    c.fillStyle = sh; c.fillRect(0, 480, w, 80);
+
+    // white name plate
+    c.fillStyle = "rgba(255,255,255,.97)"; c.fillRect(0, 556, w, 76);
+    c.fillStyle = "#c9ccd2"; c.fillRect(0, 630, w, 2);
+    c.textAlign = "left"; c.textBaseline = "middle"; c.fillStyle = "#111";
+    var nw = 0;
+    if (t.name) { fit(c, t.name, "900", SANS, 58, 380, 26); nw = c.measureText(t.name).width; fat(c, t.name, 48, 596); }
+    var cx = 48 + nw + 26;
+    c.fillStyle = "#b5b9c1"; c.fillRect(cx, 570, 3, 48);
+    cx += 22;
+    c.fillStyle = "#2a2d33";
+    if (t.tag) { fit(c, t.tag, "700", SANS, 25, w - cx - 40, 14); fat(c, t.tag, cx, 580); }
+    if (t.sub) { fit(c, t.sub, "700", SANS, 25, w - cx - 40, 14); fat(c, t.sub, cx, 609); }
+
+    // blue headline banner
+    var bg = c.createLinearGradient(0, 632, 0, 720);
+    bg.addColorStop(0, "#2a68d0"); bg.addColorStop(1, "#173f95");
+    c.fillStyle = bg; c.fillRect(0, 632, w, 88);
+    c.fillStyle = "rgba(255,255,255,.3)"; c.fillRect(0, 632, w, 2);
+    if (t.headline) {
+      fit(c, t.headline, "900", SANS, 60, w - 96, 28);
+      c.lineJoin = "round"; c.lineWidth = 7; c.strokeStyle = "#0c2a6e"; c.strokeText(t.headline, 48, 678);
+      c.fillStyle = "#fff"; c.fillText(t.headline, 48, 678);
+    }
+  };
+
   function poly(c, pts) {
     c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
     for (var i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
@@ -1125,13 +1159,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   };
 
 
-  var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "clinic", "profile", "sleeper", "dual"];
+  var ORDER = ["news", "newsw", "newsr", "intv", "newst", "newsd", "paper", "cctv", "clinic", "profile", "sleeper", "dual"];
   var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue", "time2", "suf2"];
 
   /* ---------- state ---------- */
   var texts = {
     news: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
+    intv: { name: "山田 太郎", tag: "1日30分睡眠のショートスリーパー", sub: "短眠メソッドを提供する「サンプル」代表", headline: "1日30分! 超ショートスリーパー生活の実態" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
     clinic: { headline: "整形顔フィルターを\n使ってみたｗ", place: "9.6万", tag2: "低く評価", when: "718", name: "@フレーム劇場", sub: "#整形顔フィルター #ネタ" },
@@ -1152,6 +1187,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   var KEEP = {
     news: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
+    intv: ["name", "tag", "sub", "headline"],
     newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newst: ["name", "tag", "place", "time", "headline"],
     newsd: ["tag", "headline", "time", "time2"],
@@ -1170,7 +1206,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   }
 
   /* TV look + animation */
-  var animSec, creditText = "", tvfx = { on: true }, TV_FRAMES = ["news", "newsw", "newsr", "newst", "newsd"];
+  var animSec, creditText = "", tvfx = { on: true }, TV_FRAMES = ["news", "newsw", "newsr", "intv", "newst", "newsd"];
   function ease(x) { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); }
   function isTVFrame(id) { return TV_FRAMES.indexOf(id) >= 0; }
   var tvBuf = document.createElement("canvas"), tvBufCtx = tvBuf.getContext("2d"), noisePat = null;
