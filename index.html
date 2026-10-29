@@ -74,6 +74,8 @@ canvas#cv { display: block; width: 100%; height: auto; aspect-ratio: 3 / 4; bord
   font-family: inherit; font-size: 0.82rem; padding: 10px 2px; border-radius: 10px; border: 0;
   background: var(--surface-2); color: var(--fg); cursor: pointer;
 }
+#narr { width: 100%; font-family: var(--font-body); font-size: 0.9rem; padding: 11px 12px; border: 0; border-radius: 10px; background: var(--surface-2); color: var(--fg); resize: vertical; }
+#narrVoice { width: 100%; font-family: var(--font-body); font-size: 0.9rem; padding: 11px 12px; border: 0; border-radius: 10px; background: var(--surface-2); color: var(--fg); }
 .seg button:disabled { opacity: .45; cursor: default; }
 .seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); font-weight: 700; }
 .row { display: grid; grid-template-columns: 5.5em minmax(0, 1fr) 3em; align-items: center; gap: 10px; font-size: 0.86rem; }
@@ -217,6 +219,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       <button type="button" id="animRec">動画で保存(8秒)</button>
       <button type="button" id="animShare" style="grid-column: 1 / -1" disabled>動画をSNSなどに共有（録画後に使えます）</button>
     </div>
+    <label class="check"><input type="checkbox" id="narr-on" checked>「動きをプレビュー」「動画で保存」に合わせて読み上げる</label>
+    <textarea id="narr" rows="3" placeholder="読み上げる原稿（空欄なら画面の文字から自動で作ります）" aria-label="読み上げ原稿"></textarea>
+    <label class="row" for="narrRate" style="grid-template-columns: 5.5em minmax(0, 1fr) 3em">速さ<input type="range" id="narrRate" min="70" max="140" value="100"><output id="narrRateO">1.0</output></label>
+    <label class="field"><span>声</span><select id="narrVoice" aria-label="読み上げの声"></select></label>
+    <button type="button" id="narrPlay" class="seg-btn">読み上げだけ試す</button>
+    <p class="small" id="narrNote">声はブラウザ内蔵の読み上げ機能で、無料です。端末によって声の種類が違います。</p>
     <p class="small" id="animNote">「逮捕報道」の枠では、テロップが画面に入ってくる動きと、ゆっくりした寄りが付きます。他の枠は、ざらつきとスクロール帯の動きだけです。</p>
   </div>
 
@@ -1337,7 +1345,46 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     animRAF = requestAnimationFrame(step);
   }
   $("tv-on").addEventListener("change", function (e) { tvfx.on = e.target.checked; redraw(); });
-  $("animPrev").onclick = function () { if (!recording) playAnim(8); };
+
+  /* free voice: the browser's built-in speech synthesis (not captured in the recorded file) */
+  var synth = window.speechSynthesis, speakTimer = null;
+  function narrText() {
+    var typed = $("narr").value.trim();
+    if (typed) return typed;
+    var t = texts[state.cur] || {}, out = [];
+    ["tag", "place", "red", "blue"].forEach(function (k) { if (t[k]) out.push(t[k]); });
+    if (t.time || t.suf) out.push((t.time || "") + (t.suf || ""));
+    ["headline", "sub", "when"].forEach(function (k) { if (t[k]) out.push(String(t[k]).replace(/\n/g, "")); });
+    return out.join("。");
+  }
+  function fillVoices() {
+    if (!synth) return;
+    var sel = $("narrVoice"), keep = sel.value, list = synth.getVoices().filter(function (v) { return /^ja/i.test(v.lang); });
+    sel.innerHTML = "";
+    if (!list.length) { var o = document.createElement("option"); o.textContent = "日本語の声が見つかりません"; o.value = ""; sel.appendChild(o); return; }
+    list.forEach(function (v) { var o = document.createElement("option"); o.value = v.name; o.textContent = v.name; sel.appendChild(o); });
+    if (keep) sel.value = keep;
+  }
+  if (synth) { fillVoices(); synth.onvoiceschanged = fillVoices; }
+  function speakNow() {
+    if (!synth) { $("msg").textContent = "この端末のブラウザは読み上げに対応していません。"; return; }
+    synth.cancel();
+    var text = narrText();
+    if (!text) return;
+    var u = new SpeechSynthesisUtterance(text);
+    u.lang = "ja-JP"; u.rate = +$("narrRate").value / 100;
+    var vn = $("narrVoice").value;
+    if (vn) { var v = synth.getVoices().filter(function (x) { return x.name === vn; })[0]; if (v) u.voice = v; }
+    synth.speak(u);
+  }
+  function speakSoon() { clearTimeout(speakTimer); if ($("narr-on").checked) speakTimer = setTimeout(speakNow, 1200); }
+  $("narrRate").addEventListener("input", function () { $("narrRateO").textContent = (+$("narrRate").value / 100).toFixed(1); save(); });
+  $("narr").addEventListener("input", save);
+  $("narrVoice").addEventListener("change", save);
+  $("narr-on").addEventListener("change", save);
+  $("narrPlay").onclick = speakNow;
+
+  $("animPrev").onclick = function () { if (!recording) { playAnim(8); speakSoon(); } };
   $("animRec").onclick = function () {
     if (recording) return;
     if (!(cv.captureStream && window.MediaRecorder)) { $("msg").textContent = "この端末のブラウザは動画の書き出しに対応していません。"; return; }
@@ -1360,6 +1407,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     };
     rec.start();
     playAnim(8, function () { setTimeout(function () { rec.stop(); }, 150); });
+    speakSoon();
   };
   $("toggleFields").onclick = function () {
     var c = $("fieldsSheet").classList.toggle("collapsed");
@@ -1562,7 +1610,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
           if (typeof v === "string" && v !== (defaults[id] || {})[k]) { (diff[id] = diff[id] || {})[k] = v; }
         });
       });
-      localStorage.setItem(STORE_KEY, JSON.stringify({ cur: state.cur, texts: diff, colors: colors, led: opts.led, dual: opts.dual, scrollOn: opts.scrollOn, view: view, tv: tvfx.on }));
+      localStorage.setItem(STORE_KEY, JSON.stringify({ cur: state.cur, texts: diff, colors: colors, led: opts.led, dual: opts.dual, scrollOn: opts.scrollOn, view: view, tv: tvfx.on, narr: { text: $("narr").value, rate: $("narrRate").value, voice: $("narrVoice").value, on: $("narr-on").checked } }));
     } catch (e) {}
   }
   function idb(cb) {
@@ -1617,6 +1665,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         view.fx = saved.view.fx; view.fy = saved.view.fy; view.contain = !!saved.view.contain;
         $("v-contain").checked = view.contain; $("v-y").value = Math.round(view.fy * 100); $("v-x").value = Math.round(view.fx * 100);
         updView();
+      }
+      if (saved.narr) {
+        $("narr").value = saved.narr.text || ""; $("narrRate").value = saved.narr.rate || 100;
+        $("narrRateO").textContent = (+$("narrRate").value / 100).toFixed(1);
+        $("narr-on").checked = saved.narr.on !== false;
+        if (saved.narr.voice) { var sv2 = document.createElement("option"); sv2.value = sv2.textContent = saved.narr.voice; $("narrVoice").appendChild(sv2); $("narrVoice").value = saved.narr.voice; }
       }
       if (typeof saved.tv === "boolean") { tvfx.on = saved.tv; $("tv-on").checked = saved.tv; }
       if (saved.cur && F[saved.cur]) startFrame = saved.cur;
