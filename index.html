@@ -211,7 +211,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   </div>
 
   <div class="sheet" id="tvSheet" hidden>
-    <label class="check"><input type="checkbox" id="tv-on" checked>テレビ画面風の質感（ざらつき・走査線・ぼかし）</label>
+    <label class="check"><input type="checkbox" id="tv-on" checked>テレビ画面風の質感（ざらつき・ぼかし）</label>
     <div class="seg" style="grid-template-columns: 1fr 1fr">
       <button type="button" id="animPrev">動きをプレビュー</button>
       <button type="button" id="animRec">動画で保存(8秒)</button>
@@ -913,9 +913,6 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       nx.putImageData(nd, 0, 0); noisePat = c.createPattern(nc, "repeat");
     }
     c.save(); c.globalAlpha = 0.055; c.translate((tick * 97) % 256, (tick * 57) % 256); c.fillStyle = noisePat; c.fillRect(-256, -256, w + 512, h + 512); c.restore();
-    c.save(); c.fillStyle = "rgba(0,0,0,.07)";
-    for (var y = 0; y < h; y += 4) c.fillRect(0, y, w, 1.4);
-    c.restore();
     var vg = c.createRadialGradient(w / 2, h / 2, h * 0.45, w / 2, h / 2, h * 0.95);
     vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.28)");
     c.fillStyle = vg; c.fillRect(0, 0, w, h);
