@@ -853,13 +853,13 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     c.fillStyle = "#c9ccd2"; c.fillRect(0, 630, w, 2);
     c.textAlign = "left"; c.textBaseline = "middle"; c.fillStyle = "#111";
     var nw = 0;
-    if (t.name) { fit(c, t.name, "900", SANS, 58, 380, 26); nw = c.measureText(t.name).width; fat(c, t.name, 48, 596); }
+    if (t.name) { fit(c, t.name, "700", SANS, 58, 380, 26); nw = c.measureText(t.name).width; c.lineJoin = "round"; c.lineWidth = 1.4; c.strokeStyle = "#111"; c.strokeText(t.name, 48, 596); c.fillText(t.name, 48, 596); }
     var cx = 48 + nw + 26;
     c.fillStyle = "#b5b9c1"; c.fillRect(cx, 570, 3, 48);
     cx += 22;
     c.fillStyle = "#2a2d33";
-    if (t.tag) { fit(c, t.tag, "700", SANS, 25, w - cx - 40, 14); fat(c, t.tag, cx, 580); }
-    if (t.sub) { fit(c, t.sub, "700", SANS, 25, w - cx - 40, 14); fat(c, t.sub, cx, 609); }
+    if (t.tag) { fit(c, t.tag, "700", SANS, 25, w - cx - 40, 14); c.fillText(t.tag, cx, 580); }
+    if (t.sub) { fit(c, t.sub, "700", SANS, 25, w - cx - 40, 14); c.fillText(t.sub, cx, 609); }
 
     // blue headline banner
     var bg = c.createLinearGradient(0, 632, 0, 720);
@@ -1328,8 +1328,22 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       regions.push({ text: s, x: Math.min(xa, xb), y: Math.min(ya, yb), w: Math.abs(xb - xa), h: Math.abs(yb - ya) });
     } catch (e) {}
   };
+  /* web fonts are split by character range; a canvas never triggers the download, so request the glyphs we actually draw, then redraw */
+  var glyphDone = {}, glyphTimer = null;
+  function ensureGlyphs(id) {
+    if (!(document.fonts && document.fonts.load)) return;
+    var all = Object.keys(texts[id] || {}).map(function (k) { return plain(texts[id][k]); }).join("");
+    var ch = Array.from(new Set(all.split(""))).filter(function (c) { return c > "" && !glyphDone[c]; });
+    if (!ch.length) return;
+    ch.forEach(function (c) { glyphDone[c] = 1; });
+    var txt = ch.join("");
+    Promise.all(['900 40px "Noto Sans JP"', '700 40px "Noto Sans JP"', '900 40px "Zen Kaku Gothic New"', '700 40px "Zen Kaku Gothic New"', '900 40px "Noto Serif JP"', '700 40px "Noto Serif JP"'].map(function (f) {
+      return document.fonts.load(f, txt).catch(function () {});
+    })).then(function () { clearTimeout(glyphTimer); glyphTimer = setTimeout(function () { render(); schedThumbs(); }, 50); });
+  }
   function render() {
     var id = state.cur;
+    ensureGlyphs(id);
     regions = []; ctx.fillText = recordText; ctx.strokeText = strokeHook;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = "none"; ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.restore();
     try { F[id].draw(ctx, S(id)); } finally { delete ctx.fillText; delete ctx.strokeText; }
