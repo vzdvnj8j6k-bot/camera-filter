@@ -139,6 +139,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
 .ep-top { display: flex; justify-content: space-between; align-items: center; }
 .ep-label { font-size: 0.82rem; font-weight: 700; color: #ffd000; }
 .ep-done { font-family: inherit; font-size: 0.9rem; font-weight: 700; padding: 9px 22px; border: 0; border-radius: 999px; background: #fff; color: #000; cursor: pointer; }
+.ep-rich { min-height: 50px; padding: 12px 14px; border-radius: 12px; background: #9aa0a8; color: #222222; font-family: var(--font-body); font-size: 16px; font-weight: 700; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; user-select: text; -webkit-user-select: text; }
+.ep-rich.multi { min-height: 84px; }
+.ep-rich:empty::before { content: attr(data-placeholder); color: #4a4f57; }
+.ep-rich:focus { box-shadow: 0 0 0 2px #2b7bff; }
 .ep-hint { font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
 .ep-colors { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ep-sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #555; padding: 0; cursor: pointer; flex: none; }
@@ -1334,13 +1338,57 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     buildChips();
     if (vv) { vv.removeEventListener("resize", placePanel); vv.removeEventListener("scroll", placePanel); }
   }
-  function applyRichSel(inp, hex) {
-    var a = inp.selectionStart, b = inp.selectionEnd, sel = inp.value.slice(a, b).replace(RICH_RE, "$2"), name = "";
-    Object.keys(RICH).forEach(function (n) { if (RICH[n] === hex) name = n; });
-    var ins = name ? "⟦" + name + ":" + sel + "⟧" : sel;
-    inp.value = inp.value.slice(0, a) + ins + inp.value.slice(b);
-    inp.setSelectionRange(a, a + ins.length);
-    inp.dispatchEvent(new Event("input"));
+  /* contenteditable <-> markup. The editor's own base colour stands for "no colour" (the frame's default). */
+  var RICH_BASE = "#222222";
+  function escHTML(x) { return x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function richToHTML(s) {
+    var chars = richChars(s), html = "", i = 0, j, col, run;
+    while (i < chars.length) {
+      col = chars[i].col; j = i; run = "";
+      while (j < chars.length && chars[j].col === col) run += chars[j++].ch;
+      html += (col ? '<span style="color:' + col + '">' : "") + escHTML(run).replace(/\n/g, "<br>") + (col ? "</span>" : "");
+      i = j;
+    }
+    return html;
+  }
+  function hexOfColor(s) {
+    if (!s) return null;
+    s = String(s).trim().toLowerCase();
+    var m = s.match(/^rgba?\(\s*(\d+)[ ,]+(\d+)[ ,]+(\d+)/);
+    if (m) return "#" + [m[1], m[2], m[3]].map(function (x) { return ("0" + (+x).toString(16)).slice(-2); }).join("");
+    if (/^#[0-9a-f]{6}$/.test(s)) return s;
+    if (/^#[0-9a-f]{3}$/.test(s)) return "#" + s[1] + s[1] + s[2] + s[2] + s[3] + s[3];
+    return null;
+  }
+  function richNameOf(hex) {
+    if (!hex || hex === RICH_BASE) return null;
+    var best = null, bd = 1e9, c = [1, 3, 5].map(function (i) { return parseInt(hex.slice(i, i + 2), 16); });
+    Object.keys(RICH).forEach(function (n) {
+      var d = 0; [1, 3, 5].forEach(function (i, q) { var v = parseInt(RICH[n].slice(i, i + 2), 16) - c[q]; d += v * v; });
+      if (d < bd) { bd = d; best = n; }
+    });
+    return best;
+  }
+  function serializeRich(root) {
+    var out = "";
+    function walk(node, name) {
+      Array.prototype.forEach.call(node.childNodes, function (n) {
+        if (n.nodeType === 3) {
+          var tx = n.nodeValue.replace(/[​⟦⟧]/g, "");
+          if (tx) out += name ? "⟦" + name + ":" + tx + "⟧" : tx;
+        } else if (n.nodeType === 1) {
+          if (n.nodeName === "BR") { out += "\n"; return; }
+          var hx = hexOfColor((n.style && n.style.color) || (n.getAttribute && n.getAttribute("color")));
+          if (/^(DIV|P)$/.test(n.nodeName) && out && out.charAt(out.length - 1) !== "\n") out += "\n";
+          walk(n, hx ? richNameOf(hx) : name);
+        }
+      });
+    }
+    walk(root, null);
+    out = out.replace(/\n+$/, "");
+    var prev;
+    do { prev = out; out = out.replace(/⟦([白黒赤青黄緑桃]):([^⟧]*)⟧⟦\1:([^⟧]*)⟧/g, "⟦$1:$2$3⟧"); } while (out !== prev);
+    return out;
   }
   function openEditor(k) {
     closeEditor();
@@ -1350,47 +1398,28 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     editor = document.createElement("div"); editor.className = "edit-panel";
     editor.innerHTML = '<div class="ep-in"><div class="ep-top"><span class="ep-label"></span><button type="button" class="ep-done">完了</button></div><div class="ep-colors" role="group" aria-label="文字の色"></div><input type="text" class="ep-input" autocomplete="off"></div>';
     var cbox = editor.querySelector(".ep-colors");
-    var rich = (RICH_KEYS[state.cur] || []).indexOf(k) >= 0, typing = null, hint = null, skipNext = false;
-    function colorName(hex) { var n = "標準"; Object.keys(RICH).forEach(function (x) { if (RICH[x] === hex) n = x; }); return n; }
+    var rich = (RICH_KEYS[state.cur] || []).indexOf(k) >= 0, typing = null, hint = null;
     function updateHint() {
-      if (hint) hint.textContent = "いまの色：" + colorName(typing) + "。この色で続けて打てます。すでにある文字の色を変えるときは、文字を選んでから色を押してください（⟦赤:…⟧と表示されますが、画像には出ません）。";
+      if (hint) hint.textContent = "文字を選んでから色を押すと、その部分の色が変わります。色を押してから打つと、その色で入力できます。「標準」でもとの色に戻ります。";
     }
     function paintSwatches() {
       var cur = rich ? (typing || "") : ((colors[state.cur] || {})[k] || "");
       Array.prototype.forEach.call(cbox.children, function (b) { b.classList.toggle("on", (b.getAttribute("data-c") || "") === cur); });
-    }
-    /* if the caret sits inside a coloured span of another colour, step out of it so the next characters get the new colour */
-    function leaveSpan() {
-      var v = inp.value, pos = inp.selectionStart, m;
-      RICH_RE.lastIndex = 0;
-      while ((m = RICH_RE.exec(v))) {
-        var s = m.index, e = s + m[0].length;
-        if (pos >= s + 3 && pos <= e - 1) { if (RICH[m[1]] !== typing) inp.setSelectionRange(e, e); break; }
-      }
-    }
-    /* characters typed while a colour is chosen are wrapped in that colour (compared against the value before the edit) */
-    function processTyping(prev) {
-      var cur = inp.value;
-      if (!rich || !typing || cur === prev) return;
-      var p = 0, s = 0;
-      while (p < prev.length && p < cur.length && prev[p] === cur[p]) p++;
-      while (s < prev.length - p && s < cur.length - p && prev[prev.length - 1 - s] === cur[cur.length - 1 - s]) s++;
-      var ins = cur.slice(p, cur.length - s);
-      if (!ins || /[⟦⟧]/.test(ins)) return;
-      var before = cur.slice(0, p), after = cur.slice(cur.length - s), m;
-      RICH_RE.lastIndex = 0;
-      while ((m = RICH_RE.exec(cur))) { if (p >= m.index + 3 && p <= m.index + m[0].length - 1) return; }
-      var name = colorName(typing), out = before + "⟦" + name + ":" + ins + "⟧" + after, caret = before.length + 3 + ins.length;
-      inp.value = out; inp.setSelectionRange(caret, caret);
     }
     [["", "標準"], ["#ffffff", "白"], ["#111111", "黒"], ["#e0141e", "赤"], ["#1747c8", "青"], ["#ffd000", "黄"], ["#12b886", "緑"], ["#ff3d9a", "ピンク"]].forEach(function (p) {
       var b = document.createElement("button");
       b.type = "button"; b.className = "ep-sw" + (p[0] ? "" : " std"); b.setAttribute("data-c", p[0]); b.setAttribute("aria-label", "文字色：" + p[1]);
       if (p[0]) b.style.background = p[0]; else b.textContent = "標準";
       b.addEventListener("mousedown", function (ev) { ev.preventDefault(); });
+      b.addEventListener("pointerdown", function (ev) { ev.preventDefault(); });
       b.addEventListener("click", function () {
-        if (rich && inp && inp.selectionStart !== inp.selectionEnd) { skipNext = true; applyRichSel(inp, p[0]); return; }
-        if (rich) { typing = p[0] || null; leaveSpan(); paintSwatches(); updateHint(); inp.focus(); return; }
+        if (rich) {
+          inp.focus();
+          document.execCommand("styleWithCSS", false, true);
+          document.execCommand("foreColor", false, p[0] || RICH_BASE);
+          typing = p[0] || null; paintSwatches(); syncText();
+          return;
+        }
         colors[state.cur] = colors[state.cur] || {};
         if (p[0]) colors[state.cur][k] = p[0]; else delete colors[state.cur][k];
         paintSwatches(); redraw();
@@ -1405,27 +1434,43 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
     var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw") && k === "headline";
-    if (multi) {
-      var ta = document.createElement("textarea");
-      ta.className = "ep-input"; ta.rows = 2; inp.parentNode.replaceChild(ta, inp); inp = ta;
+    if (rich) {
+      /* WYSIWYG: a contenteditable box where coloured text is shown in its colour (the ⟦色:…⟧ markup stays hidden) */
+      var ce = document.createElement("div");
+      ce.className = "ep-input ep-rich" + (multi ? " multi" : ""); ce.contentEditable = "true";
+      ce.setAttribute("role", "textbox"); ce.setAttribute("aria-multiline", multi ? "true" : "false"); ce.setAttribute("aria-label", label);
+      ce.setAttribute("data-placeholder", multi ? label + "（改行できます）" : label);
+      ce.innerHTML = richToHTML(texts[state.cur][k] || "");
+      ce.addEventListener("paste", function (ev) {
+        ev.preventDefault();
+        var tx = ((ev.clipboardData || window.clipboardData).getData("text/plain") || "").replace(/[⟦⟧]/g, "");
+        document.execCommand("insertText", false, multi ? tx : tx.replace(/\n/g, ""));
+      });
+      inp.parentNode.replaceChild(ce, inp); inp = ce;
+    } else {
+      if (multi) {
+        var ta = document.createElement("textarea");
+        ta.className = "ep-input"; ta.rows = 2; inp.parentNode.replaceChild(ta, inp); inp = ta;
+      }
+      inp.value = texts[state.cur][k] || ""; inp.placeholder = multi ? label + "（改行できます）" : label; inp.setAttribute("aria-label", label);
     }
-    inp.value = texts[state.cur][k] || ""; inp.placeholder = multi ? label + "（改行できます）" : label; inp.setAttribute("aria-label", label);
-    var prevVal = inp.value, baseVal = prevVal, composing = false;
     function syncText() {
-      texts[state.cur][k] = inp.value; $("f-" + k).value = inp.value; redraw(); updateHl(); buildChips();
+      var v = rich ? serializeRich(inp) : inp.value;
+      texts[state.cur][k] = v; $("f-" + k).value = plain(v); redraw(); updateHl(); buildChips();
     }
-    inp.addEventListener("compositionstart", function () { composing = true; baseVal = prevVal; });
-    inp.addEventListener("compositionend", function () { composing = false; processTyping(baseVal); prevVal = inp.value; syncText(); });
-    inp.addEventListener("input", function (ev) {
-      if (composing || ev.isComposing) { syncText(); return; }
-      if (skipNext) { skipNext = false; prevVal = inp.value; syncText(); return; }
-      processTyping(prevVal); prevVal = inp.value; syncText();
+    inp.addEventListener("input", syncText);
+    inp.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape") { closeEditor(); return; }
+      if (ev.key === "Enter") {
+        if (!multi) { ev.preventDefault(); closeEditor(); }
+        else if (rich) { ev.preventDefault(); document.execCommand("insertLineBreak"); }
+      }
     });
-    inp.addEventListener("keydown", function (ev) { if (ev.key === "Escape" || (ev.key === "Enter" && !multi)) closeEditor(); });
     editor.querySelector(".ep-done").addEventListener("click", closeEditor);
     document.body.appendChild(editor);
     if (vv) { vv.addEventListener("resize", placePanel); vv.addEventListener("scroll", placePanel); }
-    inp.focus(); inp.select();
+    inp.focus();
+    if (rich) document.execCommand("selectAll"); else inp.select();
     buildChips();
     placePanel(); setTimeout(placePanel, 250); setTimeout(placePanel, 600);
   }
