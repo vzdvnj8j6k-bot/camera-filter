@@ -1049,7 +1049,47 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (t.headline) { fit(c, t.headline, "900", SERIF, 52, w - 80, 26); c.fillStyle = "#fff"; c.fillText(t.headline, w / 2, h - bh + 96); }
   };
 
-  var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "clinic", "profile", "dual"];
+  /* Short-sleeper screen: the sleep-deprived face (the filter is switched on by this frame) full screen, a big outlined caption, and a game-style HP gauge. */
+  F.sleeper = { name: "ショートスリーパー(縦)", fields: { headline: "上の大きな文字（改行できます）", place: "ゲージの名前", tag: "ゲージの数値（12% など）", name: "左下のユーザー名", sub: "左下のひとこと" } };
+  F.sleeper.draw = function (c, S) {
+    var w = W, h = H, t = S.t, photo = S.shp || S.main;
+    c.filter = "contrast(1.05) saturate(.9)"; cover(c, photo, 0, 0, w, h); c.filter = "none";
+    var tg = c.createLinearGradient(0, 0, 0, 520); tg.addColorStop(0, "rgba(0,0,0,.55)"); tg.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = tg; c.fillRect(0, 0, w, 520);
+    var bgr = c.createLinearGradient(0, h - 380, 0, h); bgr.addColorStop(0, "rgba(0,0,0,0)"); bgr.addColorStop(1, "rgba(0,0,0,.6)");
+    c.fillStyle = bgr; c.fillRect(0, h - 380, w, 380);
+    c.textBaseline = "middle"; c.textAlign = "center"; c.lineJoin = "round";
+    var lines = String(t.headline || "").split("\n").filter(function (s) { return s.length; }), fsz = 100;
+    lines.forEach(function (s) { fsz = Math.min(fsz, fit(c, s, "900", SANS, 100, w - 160, 40)); });
+    c.font = "900 " + fsz + "px " + SANS;
+    lines.forEach(function (s, i) {
+      var y = 130 + i * (fsz * 1.2);
+      c.lineWidth = Math.max(12, fsz * 0.16); c.strokeStyle = "#111"; c.strokeText(s, w / 2, y);
+      c.fillStyle = "#fff"; c.fillText(s, w / 2, y);
+    });
+    /* HP gauge under the caption */
+    var gy = h - 330, bx = 70, bw = w - 140, bh = 52, pct = Math.max(0, Math.min(100, parseFloat(t.tag) || 0));
+    if (t.place) {
+      fit(c, t.place, "900", SANS, 40, 360, 20); c.textAlign = "left";
+      c.lineWidth = 8; c.strokeStyle = "#111"; c.strokeText(t.place, bx, gy); c.fillStyle = "#fff"; c.fillText(t.place, bx, gy);
+      c.textAlign = "center";
+    }
+    var by = gy + 50;
+    c.fillStyle = "rgba(0,0,0,.6)"; rr(c, bx, by, bw, bh, 14); c.fill();
+    var fillW = Math.max(bh * 0.4, (bw - 8) * pct / 100), gr = c.createLinearGradient(bx, 0, bx + bw, 0);
+    gr.addColorStop(0, "#e5252a"); gr.addColorStop(0.5, "#f08a1c"); gr.addColorStop(1, "#6fd23a");
+    c.save(); rr(c, bx + 4, by + 4, bw - 8, bh - 8, 10); c.clip(); c.fillStyle = gr; c.fillRect(bx + 4, by + 4, fillW, bh - 8); c.restore();
+    c.strokeStyle = "rgba(255,255,255,.85)"; c.lineWidth = 3; rr(c, bx, by, bw, bh, 14); c.stroke();
+    if (t.tag) { c.font = "900 38px " + SANS; c.textAlign = "right"; c.lineWidth = 8; c.strokeStyle = "#111"; c.strokeText(t.tag, bx + bw, gy); c.fillStyle = "#fff"; c.fillText(t.tag, bx + bw, gy); c.textAlign = "center"; }
+    /* bottom left: user name and the one-liner */
+    c.textAlign = "left";
+    if (t.name) { fit(c, t.name, "700", SANS, 40, 760, 22); c.save(); c.shadowColor = "rgba(0,0,0,.7)"; c.shadowBlur = 8; c.fillStyle = "#fff"; c.fillText(t.name, 44, h - 150); c.restore(); }
+    if (t.sub) { fit(c, t.sub, "500", SANS, 34, 900, 20); c.save(); c.shadowColor = "rgba(0,0,0,.7)"; c.shadowBlur = 8; c.fillStyle = "rgba(255,255,255,.95)"; c.fillText(t.sub, 44, h - 96); c.restore(); }
+    c.textAlign = "center";
+  };
+
+
+  var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "clinic", "profile", "sleeper", "dual"];
   var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue", "time2", "suf2"];
 
   /* ---------- state ---------- */
@@ -1059,6 +1099,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
     clinic: { headline: "整形顔フィルターを\n使ってみたｗ", place: "9.6万", tag2: "低く評価", when: "718", name: "@フレーム劇場", sub: "#整形顔フィルター #ネタ" },
+    sleeper: { headline: "睡眠時間 2時間\nの顔がこちら", place: "体力ゲージ", tag: "12%", name: "@フレーム劇場", sub: "#ショートスリーパー #寝不足" },
     profile: { name: "RYO", tag: "No.1", headline: "今夜、あなただけの時間を。", sub: "身長 178cm　血液型 O型", when: "趣味 ゴルフ・映画鑑賞", place: "CLUB FRAME THEATER" },
     newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定", time: "あなた", suf: "容疑者(19)", time2: "友人", suf2: "容疑者(20)" },
     led: { headline: "ようこそ 東京へ" },
@@ -1079,6 +1120,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newst: ["name", "tag", "place", "time", "headline"],
     newsd: ["tag", "headline", "time", "time2"],
     clinic: ["headline", "place", "tag2", "when"],
+    sleeper: ["headline", "place", "tag"],
     profile: ["name", "tag", "headline"]
   };
   var RICH_KEYS = { news: ["headline"], newsw: ["headline"], newst: ["headline", "tag", "place", "red", "blue"] };
@@ -1568,7 +1610,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
-    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw" || state.cur === "clinic") && k === "headline";
+    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw" || state.cur === "clinic" || state.cur === "sleeper") && k === "headline";
     if (rich) {
       /* WYSIWYG: a contenteditable box where coloured text is shown in its colour (the ⟦色:…⟧ markup stays hidden) */
       var ce = document.createElement("div");
@@ -2452,6 +2494,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   function clinicFilterSync(id) {
     if (id === "clinic") { if (!shaped.on) { shapeAuto = true; applyShapePreset("plastic"); } }
     else if (id === "profile") { if (!shaped.on) { shapeAuto = true; applyShapePreset("model"); } }
+    else if (id === "sleeper") { if (!shaped.on) { shapeAuto = true; applyShapePreset("sleepy"); } }
     else if (shapeAuto) { shapeAuto = false; $("sh-on").checked = false; $("sh-on").dispatchEvent(new Event("change")); }
   }
 
