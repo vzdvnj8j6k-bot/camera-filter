@@ -139,6 +139,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
 .ep-top { display: flex; justify-content: space-between; align-items: center; }
 .ep-label { font-size: 0.82rem; font-weight: 700; color: #ffd000; }
 .ep-done { font-family: inherit; font-size: 0.9rem; font-weight: 700; padding: 9px 22px; border: 0; border-radius: 999px; background: #fff; color: #000; cursor: pointer; }
+.ep-hint { font-size: 0.72rem; color: var(--muted); line-height: 1.5; }
 .ep-colors { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ep-sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #555; padding: 0; cursor: pointer; flex: none; }
 .ep-sw.std { width: auto; border-radius: 999px; padding: 0 12px; background: #2c2c2e; color: #fff; font-family: inherit; font-size: 0.78rem; }
@@ -404,6 +405,29 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     c.lineJoin = "round"; c.lineWidth = lw; c.strokeStyle = c.fillStyle;
     c.strokeText(text, x, y); c.fillText(text, x, y);
   }
+  /* partial colour: ⟦赤:text⟧ marks a coloured span inside a text field */
+  var RICH = { "白": "#ffffff", "黒": "#111111", "赤": "#e0141e", "青": "#1747c8", "黄": "#ffd000", "緑": "#12b886", "桃": "#ff3d9a" };
+  var RICH_RE = /⟦([白黒赤青黄緑桃]):([^⟧]*)⟧/g, richOn = false;
+  function plain(s) { return String(s == null ? "" : s).replace(RICH_RE, "$2"); }
+  function richChars(s) {
+    var out = [], last = 0, m, str = String(s || "");
+    function add(txt, col) { Array.from(txt).forEach(function (ch) { out.push({ ch: ch, col: col }); }); }
+    RICH_RE.lastIndex = 0;
+    while ((m = RICH_RE.exec(str))) { add(str.slice(last, m.index), null); add(m[2], RICH[m[1]]); last = m.index + m[0].length; }
+    add(str.slice(last), null);
+    return out;
+  }
+  function charsText(a) { return a.map(function (x) { return x.ch; }).join(""); }
+  function drawRich(c, chars, x, y, base, bold) {
+    var i = 0, j, run, col;
+    while (i < chars.length) {
+      col = chars[i].col; j = i; run = "";
+      while (j < chars.length && chars[j].col === col) run += chars[j++].ch;
+      richOn = !!col; c.fillStyle = col || base;
+      if (bold) fat(c, run, x, y); else c.fillText(run, x, y);
+      richOn = false; x += c.measureText(run).width; i = j;
+    }
+  }
   function headLines(s) {
     var a = String(s || "").split("\n").filter(function (x) { return x.length; });
     return a.length ? a : [""];
@@ -411,9 +435,10 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   /* draws 1+ headline lines centred on cy; with several lines the font size shrinks so every line fits */
   function drawHeadLines(c, lines, x, cy, maxW, size, lead) {
     var n = lines.length, sz = n > 1 ? Math.round(size * 0.86) : size, fs = sz;
-    lines.forEach(function (l) { fs = Math.min(fs, fit(c, l, "900", SANS, sz, maxW, 20)); });
+    var base = c.fillStyle;
+    lines.forEach(function (l) { fs = Math.min(fs, fit(c, plain(l), "900", SANS, sz, maxW, 20)); });
     c.font = "900 " + fs + "px " + SANS;
-    lines.forEach(function (l, k) { fat(c, l, x, cy + (k - (n - 1) / 2) * lead); });
+    lines.forEach(function (l, k) { drawRich(c, richChars(l), x, cy + (k - (n - 1) / 2) * lead, base, true); });
   }
   function splitSuf(s) {
     var i = s.search(/[(（]/);
@@ -805,7 +830,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var lines = pl.length;
     if (lines) {
       var mw = 0;
-      pl.forEach(function (p) { fit(c, p[0], "700", SANS, 38, 640, 20); mw = Math.max(mw, c.measureText(p[0]).width); });
+      pl.forEach(function (p) { fit(c, plain(p[0]), "700", SANS, 38, 640, 20); mw = Math.max(mw, c.measureText(plain(p[0])).width); });
       var pw = mw + 48, px = w - 28 - pw, py = 24, ph = 14 + lines * 54 + 10;
       if (a !== undefined) px += (1 - ease((a - 0.4) / 0.7)) * (pw + 60);
       var bar = c.createLinearGradient(px, 0, px + pw, 0);
@@ -817,23 +842,23 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 2; c.strokeRect(px, py, pw, ph);
       c.textAlign = "left";
       pl.forEach(function (p, k) {
-        fit(c, p[0], "700", SANS, 38, 640, 20); c.fillStyle = p[1];
-        c.fillText(p[0], px + 24, py + 12 + 34 + k * 54);
+        fit(c, plain(p[0]), "700", SANS, 38, 640, 20);
+        drawRich(c, richChars(p[0]), px + 24, py + 12 + 34 + k * 54, p[1], false);
       });
     }
 
     c.font = "700 52px " + SANS;
-    var lines2 = [], cur2 = "";
+    var lines2 = [], cur2;
     String(t.headline || "").split("\n").forEach(function (par) {
-      cur2 = "";
-      Array.from(par).forEach(function (ch) {
-        if (cur2 && c.measureText(cur2 + ch).width > 880) { lines2.push(cur2); cur2 = ch; } else cur2 += ch;
+      cur2 = [];
+      richChars(par).forEach(function (rc) {
+        if (cur2.length && c.measureText(charsText(cur2) + rc.ch).width > 880) { lines2.push(cur2); cur2 = [rc]; } else cur2.push(rc);
       });
-      if (cur2) lines2.push(cur2);
+      if (cur2.length) lines2.push(cur2);
     });
     var bottom = h - 34, bh = lines2.length ? 22 + lines2.length * 66 : 0, by = bottom - bh;
     var maxw = 0;
-    lines2.forEach(function (s) { fit(c, s, "700", SANS, 52, 1000, 28); maxw = Math.max(maxw, c.measureText(s).width); });
+    lines2.forEach(function (arr) { fit(c, charsText(arr), "700", SANS, 52, 1000, 28); maxw = Math.max(maxw, c.measureText(charsText(arr)).width); });
     var bw = maxw + 52;
     var o2 = a === undefined ? 0 : -(1 - ease((a - 1.0) / 0.7)) * (Math.max(bw, 420) + 80);
     if (t.time || t.suf) {
@@ -854,7 +879,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       c.fillStyle = "rgba(0,0,0,.86)"; rr(c, 30 + o2, by, bw, bh, 5); c.fill();
       c.restore();
       c.textAlign = "left"; c.fillStyle = "#fff";
-      lines2.forEach(function (s, k) { fit(c, s, "700", SANS, 52, 1000, 28); c.fillText(s, 56 + o2, by + 11 + 33 + k * 66); });
+      lines2.forEach(function (arr, k) { fit(c, charsText(arr), "700", SANS, 52, 1000, 28); drawRich(c, arr, 56 + o2, by + 11 + 33 + k * 66, "#fff", false); });
     }
   };
 
@@ -917,13 +942,13 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newst: ["name", "tag", "place", "time", "headline"],
     newsd: ["tag", "headline"]
   };
+  var RICH_KEYS = { news: ["headline"], newsw: ["headline"], newst: ["headline", "tag", "place", "red", "blue"] };
   function placeholder(k) { return "　　　" + new Array(FIELD_KEYS.indexOf(k) + 2).join("​"); }
   function S(id) {
-    var cutReady = poster.on && poster.canvas && cut && cut.src === state.main, t = texts[id];
-    if (KEEP[id]) {
-      t = Object.assign({}, t);
-      KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
-    }
+    var cutReady = poster.on && poster.canvas && cut && cut.src === state.main, t = Object.assign({}, texts[id]);
+    var rk = RICH_KEYS[id] || [];
+    Object.keys(t).forEach(function (k) { if (typeof t[k] === "string" && rk.indexOf(k) < 0) t[k] = plain(t[k]); });
+    if (KEEP[id]) KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
     return { main: cutReady ? poster.canvas : state.main, sub: state.sub, t: t, o: opts, a: animSec };
   }
 
@@ -953,6 +978,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   var regions = [], origFillText = CanvasRenderingContext2D.prototype.fillText, origStrokeText = CanvasRenderingContext2D.prototype.strokeText;
   var colors = {}; /* per frame, per field: custom text color */
   function colorFor(s) {
+    if (richOn) return null;
     var m = colors[state.cur];
     if (!m) return null;
     var k = keyForText(String(s));
@@ -1222,9 +1248,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   function keyForText(s) {
     var t = texts[state.cur], fl = F[state.cur].fields, loose = null, n, k, v, ph = s.match(/^　　　(​+)/);
     if (ph) { k = FIELD_KEYS[ph[1].length - 1]; if (k && k in fl) return k; }
-    if (t.time && t.suf && s === t.time + t.suf && "time" in fl) return "time";
+    if (t.time && t.suf && s === plain(t.time) + plain(t.suf) && "time" in fl) return "time";
     for (n = 0; n < FIELD_KEYS.length; n++) {
-      k = FIELD_KEYS[n]; v = t[k];
+      k = FIELD_KEYS[n]; v = plain(t[k]);
       if (!(k in fl) || k === "scroll" || !v) continue;
       if (s === v) return k;
       if (!loose && v.length >= 2 && (s.indexOf(v) >= 0 || (s.length >= 2 && v.indexOf(s) >= 0 && v.length > s.length))) loose = k;
@@ -1285,6 +1311,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     buildChips();
     if (vv) { vv.removeEventListener("resize", placePanel); vv.removeEventListener("scroll", placePanel); }
   }
+  function applyRichSel(inp, hex) {
+    var a = inp.selectionStart, b = inp.selectionEnd, sel = inp.value.slice(a, b).replace(RICH_RE, "$2"), name = "";
+    Object.keys(RICH).forEach(function (n) { if (RICH[n] === hex) name = n; });
+    var ins = name ? "⟦" + name + ":" + sel + "⟧" : sel;
+    inp.value = inp.value.slice(0, a) + ins + inp.value.slice(b);
+    inp.setSelectionRange(a, a + ins.length);
+    inp.dispatchEvent(new Event("input"));
+  }
   function openEditor(k) {
     closeEditor();
     editKey = k;
@@ -1301,7 +1335,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       var b = document.createElement("button");
       b.type = "button"; b.className = "ep-sw" + (p[0] ? "" : " std"); b.setAttribute("data-c", p[0]); b.setAttribute("aria-label", "文字色：" + p[1]);
       if (p[0]) b.style.background = p[0]; else b.textContent = "標準";
+      b.addEventListener("mousedown", function (ev) { ev.preventDefault(); });
       b.addEventListener("click", function () {
+        if ((RICH_KEYS[state.cur] || []).indexOf(k) >= 0 && inp && inp.selectionStart !== inp.selectionEnd) { applyRichSel(inp, p[0]); return; }
         colors[state.cur] = colors[state.cur] || {};
         if (p[0]) colors[state.cur][k] = p[0]; else delete colors[state.cur][k];
         paintSwatches(); redraw();
@@ -1309,6 +1345,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       cbox.appendChild(b);
     });
     paintSwatches();
+    if ((RICH_KEYS[state.cur] || []).indexOf(k) >= 0) {
+      var hint = document.createElement("div"); hint.className = "ep-hint";
+      hint.textContent = "文字を選んでから色を押すと、その部分だけ色が変わります（⟦赤:…⟧と表示されます）。何も選ばずに押すと、全体の色が変わります。";
+      cbox.parentNode.insertBefore(hint, cbox.nextSibling);
+    }
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
     var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw") && k === "headline";
@@ -1381,9 +1422,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     var typed = $("narr").value.trim();
     if (typed) return typed;
     var t = texts[state.cur] || {}, out = [];
-    ["tag", "place", "red", "blue"].forEach(function (k) { if (t[k]) out.push(t[k]); });
-    if (t.time || t.suf) out.push((t.time || "") + (t.suf || ""));
-    ["headline", "sub", "when"].forEach(function (k) { if (t[k]) out.push(String(t[k]).replace(/\n/g, "")); });
+    ["tag", "place", "red", "blue"].forEach(function (k) { if (t[k]) out.push(plain(t[k])); });
+    if (t.time || t.suf) out.push(plain(t.time || "") + plain(t.suf || ""));
+    ["headline", "sub", "when"].forEach(function (k) { if (t[k]) out.push(plain(t[k]).replace(/\n/g, "")); });
     return out.length ? out.join("。") + "。" : "";
   }
   var VV = [["11", "玄野武宏（男性・ニュース向き）"], ["13", "青山龍星（男性・低め）"], ["8", "春日部つむぎ（女性）"], ["2", "四国めたん（女性）"]];
