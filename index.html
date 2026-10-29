@@ -159,6 +159,22 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   border: 1.5px solid rgba(255,255,255,0.18); background: #0d0d0d; cursor: pointer;
 }
 #miniCv.show { display: block; }
+
+/* tabs: one panel at a time instead of one long scroll */
+.tabs { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; position: sticky; top: 0; z-index: 4; background: var(--bg); padding: 4px 0; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { flex: 1 0 auto; display: grid; justify-items: center; gap: 3px; padding: 9px 12px; min-width: 64px; border: 0; border-radius: 14px; background: var(--surface); color: var(--muted); font-family: inherit; font-size: 0.74rem; font-weight: 500; cursor: pointer; }
+.tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tab[aria-selected="true"] { background: var(--fg); color: var(--bg); font-weight: 700; }
+.tab[hidden] { display: none; }
+.sheet.tab-off { display: none; }
+.step { margin: 0 0 -6px 2px; font-size: 0.76rem; color: var(--muted); font-weight: 500; }
+@media (min-width: 900px) {
+  .app { max-width: 1020px; grid-template-columns: 440px minmax(0, 1fr); column-gap: 28px; align-items: start; }
+  .app > header { grid-column: 1 / -1; }
+  .app > .shot { grid-column: 1; grid-row: 2 / span 30; position: sticky; top: 8px; }
+  .app > :not(header):not(.shot) { grid-column: 2; }
+}
 </style>
 
 
@@ -190,9 +206,19 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <div class="hint" id="hint" hidden>小さい写真をタップで入れ替え</div>
   </div>
 
+  <p class="step">① 枠を選ぶ</p>
   <div class="picker" id="picker" role="group" aria-label="枠を選ぶ"></div>
 
-  <div class="sheet collapsed" id="fieldsSheet">
+  <p class="step">② 文字・写真・加工を整える</p>
+  <div class="tabs" id="tabs" role="tablist">
+    <button class="tab" type="button" role="tab" data-tab="text" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/></svg>文字</button>
+    <button class="tab" type="button" role="tab" data-tab="photo" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg>写真</button>
+    <button class="tab" type="button" role="tab" data-tab="face" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8.5 15c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8"/></svg>顔加工</button>
+    <button class="tab" type="button" role="tab" data-tab="cut" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4-6 8-6s7 1.5 8 6"/></svg>切り抜き</button>
+    <button class="tab" type="button" role="tab" data-tab="video" aria-selected="false" id="tabVideo"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>動画</button>
+  </div>
+
+  <div class="sheet collapsed" id="fieldsSheet" data-tab="text">
     <p class="small">画像の文字を直接タップすると、その場で書き換えられます。空の項目などはここから入力できます。</p>
     <div id="fieldChips" class="chips" role="group" aria-label="編集する項目"></div>
     <button type="button" id="toggleFields" class="seg-btn">文字欄をすべて表示</button>
@@ -214,14 +240,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <label class="check" id="r-scroll-on" hidden><input type="checkbox" id="scroll-on">スクロールティッカーを表示</label>
   </div>
 
-  <div class="sheet" id="viewSheet">
+  <div class="sheet" id="viewSheet" data-tab="photo">
     <label class="check"><input type="checkbox" id="v-contain" checked>写真の全体を枠内に収める(余白はぼかして埋めます)</label>
     <label class="row" for="v-y">上下の位置<input type="range" id="v-y" min="0" max="100" value="40"><output id="v-yO"></output></label>
     <label class="row" for="v-x">左右の位置<input type="range" id="v-x" min="0" max="100" value="50"><output id="v-xO"></output></label>
     <p class="small">初期状態では写真全体を枠内に収めます。枠いっぱいに広げたいときは、チェックを外して上下左右の位置を動かしてください。</p>
   </div>
 
-  <div class="sheet" id="tvSheet" hidden>
+  <div class="sheet" id="tvSheet" data-tab="video" hidden>
     <label class="check"><input type="checkbox" id="tv-on" checked>テレビ画面風の質感（ざらつき・ぼかし）</label>
     <div class="seg" style="grid-template-columns: 1fr 1fr">
       <button type="button" id="animPrev">動きをプレビュー</button>
@@ -239,7 +265,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <p class="small" id="animNote">「逮捕報道」の枠では、テロップが画面に入ってくる動きと、ゆっくりした寄りが付きます。他の枠は、ざらつきとスクロール帯の動きだけです。</p>
   </div>
 
-  <div class="sheet" id="shapeSheet">
+  <div class="sheet" id="shapeSheet" data-tab="face">
     <label class="check"><input type="checkbox" id="sh-on">整形顔フィルター（顔を見つけて、目・あご・鼻などを変形）</label>
     <div class="seg" id="shPresets" role="group" aria-label="仕上がりの強さ" style="grid-template-columns: repeat(2, 1fr)">
       <button type="button" data-p="natural">自然</button>
@@ -272,7 +298,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <p class="small" id="sh-msg">写真を選んでから、チェックを入れてください。顔を見つけるAIは端末内で動き、写真は送信されません（初回だけ、AIの部品をダウンロードします）。</p>
   </div>
 
-  <div class="sheet" id="cutSheet">
+  <div class="sheet" id="cutSheet" data-tab="cut">
     <label class="check"><input type="checkbox" id="c-on">人物だけ切り抜いて、ポスター風にする</label>
     <label class="field"><span>大きな文字</span><input type="text" id="c-title" value="WANTED" maxlength="24" autocomplete="off"></label>
     <div class="seg five" id="cSeg" role="group" aria-label="背景の色">
@@ -285,7 +311,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <p class="small" id="c-msg">写真を選んでから、チェックを入れてください。切り抜きのAIは端末内で動き、写真は送信されません。</p>
   </div>
 
-  <div class="sheet" id="optSheet">
+  <div class="sheet" id="optSheet" data-tab="photo">
     <div class="opt" id="opt-led" hidden>
       <div class="seg five" id="ledSeg" role="group" aria-label="ライトの色">
         <button type="button" data-led="full" aria-pressed="true">カラー</button>
@@ -1280,6 +1306,25 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     picker.appendChild(b);
   });
 
+
+  /* tabs: show one sheet group at a time */
+  var curTab = "text";
+  function syncTabs() {
+    if ($("tvSheet").hidden && curTab === "video") curTab = "text";
+    if ($("cutSheet").hidden && curTab === "cut") curTab = "text";
+    $("tabVideo").hidden = $("tvSheet").hidden;
+    var tc = document.querySelector('.tab[data-tab="cut"]'); if (tc) tc.hidden = $("cutSheet").hidden;
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (b) {
+      b.setAttribute("aria-selected", b.getAttribute("data-tab") === curTab ? "true" : "false");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".sheet[data-tab]"), function (sh) {
+      sh.classList.toggle("tab-off", sh.getAttribute("data-tab") !== curTab);
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (b) {
+    b.onclick = function () { curTab = b.getAttribute("data-tab"); syncTabs(); };
+  });
+
   function choose(id) {
     state.cur = id;
     var sz = F[id].size || [W, H];
@@ -1297,6 +1342,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     });
     closeEditor();
     $("tvSheet").hidden = !isTVFrame(id);
+    syncTabs();
     $("opt-led").hidden = id !== "led";
     $("opt-dual").hidden = id !== "dual";
     $("subPasteBox").style.display = (id === "dual" || id === "newsd") ? "" : "none";
@@ -1997,6 +2043,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   var poster = { on: false, title: "WANTED", color: "#2b6cff", canvas: null };
   var cut = null, segPromise = null, cutBusy = false;
   if (window.claude && window.claude.use) $("cutSheet").hidden = true;
+  syncTabs();
 
   function cutMsg(text) { $("c-msg").textContent = text; }
   function getSegmenter() {
