@@ -2178,9 +2178,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       var smw = (v.smile || 0) / 100;
       if (smw > 0) {
         var mA = P(61), mB = P(291), mw = dist(mA, mB), sg = mA.x < mB.x ? 1 : -1;
-        H.push({ free: true, x: mA.x, y: mA.y, r: mw * 0.4, dx: -sg * mw * 0.12 * smw, dy: -mw * 0.3 * smw });
-        H.push({ free: true, x: mB.x, y: mB.y, r: mw * 0.4, dx: sg * mw * 0.12 * smw, dy: -mw * 0.3 * smw });
-        [205, 425].forEach(function (k) { var ck = P(k); H.push({ free: true, x: ck.x, y: ck.y, r: mw * 0.55, dx: 0, dy: -mw * 0.1 * smw }); });
+        /* lift the whole cheek and mouth area with wide, soft handles so the lips themselves are not distorted */
+        [[mA, 205, -1], [mB, 425, 1]].forEach(function (a) {
+          var ck = P(a[1]), cx = (a[0].x + ck.x) / 2, cy = (a[0].y + ck.y) / 2 - mw * 0.05;
+          H.push({ free: true, x: cx, y: cy, r: mw * 0.95, dx: a[2] * sg * mw * 0.07 * smw, dy: -mw * 0.22 * smw });
+        });
+        var ey = [P(50), P(280)]; ey.forEach(function (p) { H.push({ free: true, x: p.x, y: p.y, r: mw * 0.8, dx: 0, dy: -mw * 0.1 * smw }); });
       }
       var trw = (v.tired || 0) / 100;
       if (trw > 0) [[468, 33, 133], [473, 362, 263]].forEach(function (a) {
