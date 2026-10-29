@@ -351,6 +351,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   var view = { fx: 0.5, fy: 0.4, contain: true };
   /* face-reshape filter: the warped copy of the main photo (valid while shaped.src is still the main photo) */
   var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0, fat: 0, body: 0 } };
+  var shapeAuto = false; /* true while the clinic frame has switched the filter on by itself */
   var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup", "fat", "body"];
   var SHAPE_PRESETS = {
     natural: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0 },
@@ -958,7 +959,49 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
   };
 
-  var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "dual"];
+  /* Clinic before/after ad: the untouched photo on the left, the face-filtered photo on the right (the filter is switched on by this frame) */
+  F.clinic = { name: "整形ビフォーアフター(横長)", size: [1280, 720], fields: { name: "クリニック名", headline: "キャッチコピー", tag: "左のラベル", tag2: "右のラベル", sub: "下の帯の文字", place: "ボタンの文字", when: "注釈（下の小さな文字）" } };
+  F.clinic.draw = function (c, S) {
+    var w = 1280, h = 720, t = S.t, left = S.orig, right = S.shp || S.orig;
+    c.save(); c.beginPath(); c.rect(0, 0, 638, h); c.clip(); cover(c, left, 0, 0, 638, h); c.restore();
+    c.save(); c.beginPath(); c.rect(642, 0, 638, h); c.clip(); cover(c, right, 642, 0, 638, h); c.restore();
+    c.fillStyle = "#fff"; c.fillRect(638, 0, 4, h);
+    c.textBaseline = "middle"; c.textAlign = "center";
+    var tg = c.createLinearGradient(0, 0, 0, 170); tg.addColorStop(0, "rgba(255,255,255,.94)"); tg.addColorStop(0.75, "rgba(255,255,255,.7)"); tg.addColorStop(1, "rgba(255,255,255,0)");
+    c.fillStyle = tg; c.fillRect(0, 0, w, 170);
+    if (t.name) { fit(c, t.name, "700", SANS, 28, 900, 16); c.fillStyle = "#8a5a2b"; c.fillText(t.name, w / 2, 34); }
+    if (t.headline) {
+      fit(c, t.headline, "900", SANS, 60, 1100, 28);
+      c.lineJoin = "round"; c.lineWidth = 12; c.strokeStyle = "#fff"; c.strokeText(t.headline, w / 2, 96);
+      c.fillStyle = "#b0305c"; c.fillText(t.headline, w / 2, 96);
+    }
+    function chip(label, x, grad) {
+      if (!label) return;
+      fit(c, label, "900", SANS, 34, 520, 18);
+      var cw = c.measureText(label).width + 44, g2 = c.createLinearGradient(x, 0, x + cw, 0);
+      g2.addColorStop(0, grad[0]); g2.addColorStop(1, grad[1]);
+      c.fillStyle = g2; rr(c, x, 540, cw, 58, 10); c.fill();
+      c.fillStyle = "#fff"; c.textAlign = "left"; c.fillText(label, x + 22, 570); c.textAlign = "center";
+    }
+    chip(t.tag, 24, ["#4a4a55", "#2b2b33"]);
+    chip(t.tag2, 666, ["#d94a7a", "#b0305c"]);
+    /* centre arrow */
+    c.save(); c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 14; c.fillStyle = "#d8b26a"; c.beginPath(); c.arc(640, 360, 46, 0, Math.PI * 2); c.fill(); c.restore();
+    c.fillStyle = "#fff"; c.beginPath(); c.moveTo(624, 336); c.lineTo(660, 360); c.lineTo(624, 384); c.closePath(); c.fill();
+    /* bottom band */
+    var bg = c.createLinearGradient(0, 620, w, 620); bg.addColorStop(0, "#3b1f4a"); bg.addColorStop(1, "#b0305c");
+    c.fillStyle = bg; c.fillRect(0, 618, w, 102);
+    if (t.sub) { fit(c, t.sub, "900", SANS, 38, 760, 20); c.fillStyle = "#fff"; c.textAlign = "left"; c.fillText(t.sub, 40, 658); c.textAlign = "center"; }
+    if (t.place) {
+      fit(c, t.place, "900", SANS, 32, 380, 18);
+      var bw2 = c.measureText(t.place).width + 56, bx = w - 40 - bw2;
+      c.fillStyle = "#d8b26a"; rr(c, bx, 632, bw2, 52, 26); c.fill();
+      c.fillStyle = "#3b1f4a"; c.fillText(t.place, bx + bw2 / 2, 659);
+    }
+    if (t.when) { fit(c, t.when, "500", SANS, 18, 1180, 12); c.fillStyle = "rgba(255,255,255,.82)"; c.fillText(t.when, w / 2, 703); }
+  };
+
+  var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "clinic", "dual"];
   var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue", "time2", "suf2"];
 
   /* ---------- state ---------- */
@@ -967,6 +1010,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
+    clinic: { name: "ビフォーアフター美容クリニック", headline: "なりたい顔に、なれる。", tag: "BEFORE 施術前", tag2: "AFTER 施術後", sub: "無料カウンセリング受付中", place: "ご予約はこちら", when: "※効果には個人差があります。写真はイメージです。" },
     newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定", time: "あなた", suf: "容疑者(19)", time2: "友人", suf2: "容疑者(20)" },
     led: { headline: "ようこそ 東京へ" },
     shibuya: { name: "SHIBUYA" },
@@ -984,7 +1028,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newst: ["name", "tag", "place", "time", "headline"],
-    newsd: ["tag", "headline", "time", "time2"]
+    newsd: ["tag", "headline", "time", "time2"],
+    clinic: ["name", "headline", "tag", "tag2", "sub", "place"]
   };
   var RICH_KEYS = { news: ["headline"], newsw: ["headline"], newst: ["headline", "tag", "place", "red", "blue"] };
   function placeholder(k) { return "　　　" + new Array(FIELD_KEYS.indexOf(k) + 2).join("​"); }
@@ -994,7 +1039,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     Object.keys(t).forEach(function (k) { if (typeof t[k] === "string" && rk.indexOf(k) < 0) t[k] = plain(t[k]); });
     if (KEEP[id]) KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
     var shapeReady = shaped.canvas && shaped.src === state.main;
-    return { main: cutReady ? poster.canvas : (shapeReady ? shaped.canvas : state.main), sub: state.sub, t: t, o: opts, a: animSec };
+    return { orig: state.main, shp: shapeReady ? shaped.canvas : null, main: cutReady ? poster.canvas : (shapeReady ? shaped.canvas : state.main), sub: state.sub, t: t, o: opts, a: animSec };
   }
 
   /* TV look + animation */
@@ -1166,6 +1211,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     $("dropSub").classList.toggle("off", !two);
     $("swap").classList.toggle("off", !two);
     $("hint").textContent = dual ? "小さい写真をタップで入れ替え" : "タップして文字を変更";
+    clinicFilterSync(id);
     $("hint").hidden = false; clearTimeout(hintTimer);
     hintTimer = setTimeout(function () { $("hint").hidden = true; }, 2600);
     $("mainLabel").textContent = two ? "メイン" : "写真";
@@ -2243,15 +2289,21 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       if (shaped.on) shapeSchedule(); save();
     });
   });
+  function applyShapePreset(name) {
+    var p = SHAPE_PRESETS[name];
+    SHAPE_KEYS.forEach(function (k) { var pv = p[k] || 0; shaped.vals[k] = pv; $("sh-" + k).value = pv; $("sh-" + k + "O").textContent = pv; });
+    Array.prototype.forEach.call(document.querySelectorAll("#shPresets button"), function (o) { o.setAttribute("aria-pressed", o.getAttribute("data-p") === name ? "true" : "false"); });
+    if (!shaped.on) { shaped.on = true; $("sh-on").checked = true; }
+    shapeRun(); save();
+  }
   Array.prototype.forEach.call(document.querySelectorAll("#shPresets button"), function (b) {
-    b.onclick = function () {
-      var p = SHAPE_PRESETS[b.getAttribute("data-p")];
-      SHAPE_KEYS.forEach(function (k) { var pv = p[k] || 0; shaped.vals[k] = pv; $("sh-" + k).value = pv; $("sh-" + k + "O").textContent = pv; });
-      Array.prototype.forEach.call(document.querySelectorAll("#shPresets button"), function (o) { o.setAttribute("aria-pressed", o === b ? "true" : "false"); });
-      if (!shaped.on) { shaped.on = true; $("sh-on").checked = true; }
-      shapeRun(); save();
-    };
+    b.onclick = function () { shapeAuto = false; applyShapePreset(b.getAttribute("data-p")); };
   });
+  /* the clinic frame needs the filtered photo: switch the filter on when it is chosen and off again when leaving, unless the user took over */
+  function clinicFilterSync(id) {
+    if (id === "clinic") { if (!shaped.on) { shapeAuto = true; applyShapePreset("plastic"); } }
+    else if (shapeAuto) { shapeAuto = false; $("sh-on").checked = false; $("sh-on").dispatchEvent(new Event("change")); }
+  }
 
   /* paste: an image on the clipboard becomes the main photo (in the dual frame, the second one goes to the selfie slot) */
   document.addEventListener("paste", function (e) {
