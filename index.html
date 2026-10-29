@@ -301,7 +301,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 <script>
 (function () {
   var W = 1080, H = 1440;
-  var SANS = '"Noto Sans JP","Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif';
+  var SANS = '"Hiragino Kaku Gothic ProN","ヒラギノ角ゴ ProN W3","Noto Sans JP","Zen Kaku Gothic New","Yu Gothic","メイリオ",sans-serif';
   var SERIF = '"Noto Serif JP","Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif';
   var MONO = '"DM Mono",ui-monospace,Consolas,monospace';
   var cv = document.getElementById("cv");
@@ -437,16 +437,20 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   }
   /* big surname with a smaller "容疑者" and a smaller age, centred on cx */
   function suspectName(c, time, suf, cx, y, maxW, size) {
-    var fs1 = fit(c, time || "", "900", SERIF, size, maxW, 28) || size;
+    /* name: heaviest weight with slightly wide letter spacing; "容疑者": semi-bold; age: smaller still */
+    var ls = Math.round(size * 0.05) + "px", lw = Math.max(7, Math.round(size * 0.14));
+    c.letterSpacing = ls;
+    var fs1 = fit(c, time || "", "900", SANS, size, maxW, 28) || size;
     var w1 = time ? c.measureText(time).width : 0;
     var s1 = Math.round(fs1 * 0.72), s2 = Math.round(fs1 * 0.5), sp = splitSuf(suf || "");
-    c.font = "900 " + s1 + "px " + SERIF; var w2a = sp[0] ? c.measureText(sp[0]).width : 0;
-    c.font = "900 " + s2 + "px " + SERIF; var w2b = sp[1] ? c.measureText(sp[1]).width : 0;
+    c.letterSpacing = "0px";
+    c.font = "600 " + s1 + "px " + SANS; var w2a = sp[0] ? c.measureText(sp[0]).width : 0;
+    c.font = "600 " + s2 + "px " + SANS; var w2b = sp[1] ? c.measureText(sp[1]).width : 0;
     var w2 = w2a + w2b, sc = Math.min(1, maxW / Math.max(1, w1 + w2)), xs = cx - (w1 + w2) * sc / 2;
     c.save(); c.translate(xs, 0); c.scale(sc, 1); c.textAlign = "left";
-    if (time) { c.font = "900 " + fs1 + "px " + SERIF; outlined(c, time, 0, y, 11, "#fff"); }
-    if (sp[0]) { c.font = "900 " + s1 + "px " + SERIF; outlined(c, sp[0], w1, y, 8, "#fff"); }
-    if (sp[1]) { c.font = "900 " + s2 + "px " + SERIF; outlined(c, sp[1], w1 + w2a, y, 6, "#fff"); }
+    if (time) { c.font = "900 " + fs1 + "px " + SANS; c.letterSpacing = ls; outlined(c, time, 0, y, lw, "#fff"); c.letterSpacing = "0px"; }
+    if (sp[0]) { c.font = "600 " + s1 + "px " + SANS; outlined(c, sp[0], w1, y, Math.round(lw * 0.75), "#fff"); }
+    if (sp[1]) { c.font = "600 " + s2 + "px " + SANS; outlined(c, sp[1], w1 + w2a, y, Math.round(lw * 0.55), "#fff"); }
     c.restore(); c.textAlign = "left";
   }
   /* split coloured text into lines (a colour span may run across a line break) */
@@ -461,9 +465,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   function drawHeadLines(c, lines, x, cy, maxW, size, lead) {
     var n = lines.length, sz = n > 1 ? Math.round(size * 0.86) : size, fs = sz;
     var base = c.fillStyle;
+    c.letterSpacing = "-1px";
     lines.forEach(function (l) { fs = Math.min(fs, fit(c, charsText(l), "700", SANS, sz, maxW, 20)); });
     c.font = "700 " + fs + "px " + SANS;
     lines.forEach(function (l, k) { drawRich(c, l, x, cy + (k - (n - 1) / 2) * lead, base, false); });
+    c.letterSpacing = "0px";
   }
   function splitSuf(s) {
     var i = s.search(/[(（]/);
@@ -512,21 +518,21 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     // boxed place on the right
     if (t.place || t.when) {
       var w1 = 0, w2 = 0;
-      if (t.place) { fit(c, t.place, "900", SANS, 34, 480, 18); w1 = c.measureText(t.place).width; }
-      if (t.when) { fit(c, t.when, "900", SANS, 30, 480, 16); w2 = c.measureText(t.when).width; }
+      if (t.place) { fit(c, t.place, "500", SANS, 34, 480, 18); w1 = c.measureText(t.place).width; }
+      if (t.when) { fit(c, t.when, "500", SANS, 30, 480, 16); w2 = c.measureText(t.when).width; }
       var pw = Math.min(Math.max(w1, w2) + 48, 520), px = W - 40 - pw, py = 236;
       c.textAlign = "center";
       if (t.place) {
         c.fillStyle = "#fff"; c.fillRect(px, py, pw, 56);
         c.strokeStyle = "#e0141e"; c.lineWidth = 4; c.strokeRect(px + 2, py + 2, pw - 4, 52);
-        fit(c, t.place, "900", SANS, 34, pw - 30, 18);
-        c.fillStyle = "#e0141e"; fat(c, t.place, px + pw / 2, py + 29);
+        fit(c, t.place, "500", SANS, 34, pw - 30, 18);
+        c.fillStyle = "#e0141e"; c.fillText(t.place, px + pw / 2, py + 29);
         py += 56;
       }
       if (t.when) {
         c.fillStyle = "#e0141e"; c.fillRect(px, py, pw, 50);
-        fit(c, t.when, "900", SANS, 30, pw - 30, 16);
-        c.fillStyle = "#fff"; fat(c, t.when, px + pw / 2, py + 26);
+        fit(c, t.when, "500", SANS, 30, pw - 30, 16);
+        c.fillStyle = "#fff"; c.fillText(t.when, px + pw / 2, py + 26);
       }
     }
 
@@ -546,20 +552,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         c.textAlign = "left"; outlined(c, t.ticker, x0 + tw2 + gap, 1291, 10, "#fff"); c.textAlign = "center";
       }
     }
-    if (t.time || t.suf) {
-      var fs1 = fit(c, t.time || "", "900", SERIF, 92, 960, 30) || 92;
-      var w1 = t.time ? c.measureText(t.time).width : 0;
-      var s1 = Math.round(fs1 * 0.72), s2 = Math.round(fs1 * 0.5), sp = splitSuf(t.suf || "");
-      c.font = "900 " + s1 + "px " + SERIF; var w2a = sp[0] ? c.measureText(sp[0]).width : 0;
-      c.font = "900 " + s2 + "px " + SERIF; var w2b = sp[1] ? c.measureText(sp[1]).width : 0;
-      var w2 = w2a + w2b;
-      var sc = Math.min(1, 960 / Math.max(1, w1 + w2)), xs = (W - (w1 + w2) * sc) / 2;
-      c.save(); c.translate(xs, 0); c.scale(sc, 1); c.textAlign = "left";
-      if (t.time) { c.font = "900 " + fs1 + "px " + SERIF; outlined(c, t.time, 0, 1372, 12, "#fff"); }
-      if (sp[0]) { c.font = "900 " + s1 + "px " + SERIF; outlined(c, sp[0], w1, 1372, 9, "#fff"); }
-      if (sp[1]) { c.font = "900 " + s2 + "px " + SERIF; outlined(c, sp[1], w1 + w2a, 1372, 7, "#fff"); }
-      c.restore(); c.textAlign = "center";
-    }
+    if (t.time || t.suf) { suspectName(c, t.time, t.suf, W / 2, 1372, 960, 92); c.textAlign = "center"; }
 
     c.strokeStyle = "#2ab7f2"; c.lineWidth = 20; c.strokeRect(10, 10, W - 20, H - 20);
   };
@@ -599,21 +592,21 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 
     if (t.place || t.when) {
       var w1 = 0, w2 = 0;
-      if (t.place) { fit(c, t.place, "900", SANS, 26, 300, 14); w1 = c.measureText(t.place).width; }
-      if (t.when) { fit(c, t.when, "900", SANS, 24, 300, 14); w2 = c.measureText(t.when).width; }
+      if (t.place) { fit(c, t.place, "500", SANS, 26, 300, 14); w1 = c.measureText(t.place).width; }
+      if (t.when) { fit(c, t.when, "500", SANS, 24, 300, 14); w2 = c.measureText(t.when).width; }
       var pw = Math.min(Math.max(w1, w2) + 40, 340), px = w - 30 - pw, py = 136 + dy;
       c.textAlign = "center";
       if (t.place) {
         c.fillStyle = "#fff"; c.fillRect(px, py, pw, 42);
         c.strokeStyle = "#e0141e"; c.lineWidth = 3; c.strokeRect(px + 1.5, py + 1.5, pw - 3, 39);
-        fit(c, t.place, "900", SANS, 26, pw - 24, 14);
-        c.fillStyle = "#e0141e"; fat(c, t.place, px + pw / 2, py + 22);
+        fit(c, t.place, "500", SANS, 26, pw - 24, 14);
+        c.fillStyle = "#e0141e"; c.fillText(t.place, px + pw / 2, py + 22);
         py += 42;
       }
       if (t.when) {
         c.fillStyle = "#e0141e"; c.fillRect(px, py, pw, 36);
-        fit(c, t.when, "900", SANS, 24, pw - 24, 14);
-        c.fillStyle = "#fff"; fat(c, t.when, px + pw / 2, py + 19);
+        fit(c, t.when, "500", SANS, 24, pw - 24, 14);
+        c.fillStyle = "#fff"; c.fillText(t.when, px + pw / 2, py + 19);
       }
     }
 
@@ -632,20 +625,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         c.textAlign = "left"; outlined(c, t.ticker, x0 + tw2 + gap, 614, 9, "#fff"); c.textAlign = "center";
       }
     }
-    if (t.time || t.suf) {
-      var fs1 = fit(c, t.time || "", "900", SERIF, 76, 1140, 28) || 76;
-      var w1 = t.time ? c.measureText(t.time).width : 0;
-      var s1 = Math.round(fs1 * 0.72), s2 = Math.round(fs1 * 0.5), sp = splitSuf(t.suf || "");
-      c.font = "900 " + s1 + "px " + SERIF; var w2a = sp[0] ? c.measureText(sp[0]).width : 0;
-      c.font = "900 " + s2 + "px " + SERIF; var w2b = sp[1] ? c.measureText(sp[1]).width : 0;
-      var w2 = w2a + w2b;
-      var sc = Math.min(1, 1140 / Math.max(1, w1 + w2)), xs = (w - (w1 + w2) * sc) / 2;
-      c.save(); c.translate(xs, 0); c.scale(sc, 1); c.textAlign = "left";
-      if (t.time) { c.font = "900 " + fs1 + "px " + SERIF; outlined(c, t.time, 0, 676, 11, "#fff"); }
-      if (sp[0]) { c.font = "900 " + s1 + "px " + SERIF; outlined(c, sp[0], w1, 676, 8, "#fff"); }
-      if (sp[1]) { c.font = "900 " + s2 + "px " + SERIF; outlined(c, sp[1], w1 + w2a, 676, 6, "#fff"); }
-      c.restore(); c.textAlign = "center";
-    }
+    if (t.time || t.suf) { suspectName(c, t.time, t.suf, w / 2, 676, 1140, 76); c.textAlign = "center"; }
 
     c.strokeStyle = "#2ab7f2"; c.lineWidth = 16; c.strokeRect(8, 8, w - 16, h - 16);
   };
