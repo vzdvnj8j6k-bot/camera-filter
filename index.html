@@ -165,6 +165,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
     <label class="field" id="r-time"><span id="l-time">時刻</span><input type="text" id="f-time"></label>
     <label class="field" id="r-suf"><span id="l-suf">名前の後ろ</span><input type="text" id="f-suf"></label>
     <label class="field" id="r-scroll"><span id="l-scroll">スクロールニュース</span><input type="text" id="f-scroll" autocomplete="off"></label>
+    <label class="field" id="r-red"><span id="l-red">赤文字</span><input type="text" id="f-red" autocomplete="off"></label>
+    <label class="field" id="r-blue"><span id="l-blue">青文字</span><input type="text" id="f-blue" autocomplete="off"></label>
     <label class="check" id="r-scroll-on" hidden><input type="checkbox" id="scroll-on">スクロールティッカーを表示</label>
   </div>
 
@@ -703,7 +705,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
   };
 
   /* Arrest-report layout: white headline panel with blue top bar (top right), white name plate with a small note beside it, two-line black caption box (bottom left). */
-  F.newst = { name: "逮捕報道(横長)", size: [1280, 720], fields: { name: "左上の局名", tag: "右上の見出し(1行目)", place: "右上の見出し(2行目)", time: "名前", suf: "名前の後ろ", ticker: "名前の横の小さな文字", headline: "黒い囲み(1行目)", sub: "黒い囲み(2行目)" } };
+  F.newst = { name: "逮捕報道(横長)", size: [1280, 720], fields: { name: "左上の局名", tag: "右上の見出し(1行目)", place: "右上の見出し(2行目)", red: "右上の赤文字", blue: "右上の青文字", time: "名前", suf: "名前の後ろ", ticker: "名前の横の小さな文字", headline: "黒い囲み(1行目)", sub: "黒い囲み(2行目)" } };
   F.newst.draw = function (c, S) {
     var w = 1280, h = 720, t = S.t, i;
     c.filter = "contrast(1.05) saturate(1.05)"; cover(c, S.main, 0, 0, w, h); c.filter = "none";
@@ -719,20 +721,22 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
       c.fillStyle = "#14234b"; c.textAlign = "left"; fat(c, t.name, 46, 49);
     }
 
-    var l1 = t.tag || "", l2 = t.place || "", lines = (l1 ? 1 : 0) + (l2 ? 1 : 0);
+    var pl = [[t.tag, "#111"], [t.place, "#111"], [t.red, "#d8101c"], [t.blue, "#1747c8"]].filter(function (p) { return p[0]; });
+    var lines = pl.length;
     if (lines) {
-      var s1 = l1 ? fit(c, l1, "900", SANS, 38, 640, 20) : 0, w1 = l1 ? c.measureText(l1).width : 0;
-      var s2 = l2 ? fit(c, l2, "900", SANS, 38, 640, 20) : 0, w2 = l2 ? c.measureText(l2).width : 0;
-      var pw = Math.max(w1, w2) + 48, px = w - 28 - pw, py = 24, ph = 14 + lines * 54 + 10;
+      var mw = 0;
+      pl.forEach(function (p) { fit(c, p[0], "900", SANS, 38, 640, 20); mw = Math.max(mw, c.measureText(p[0]).width); });
+      var pw = mw + 48, px = w - 28 - pw, py = 24, ph = 14 + lines * 54 + 10;
       var bar = c.createLinearGradient(px, 0, px + pw, 0);
       bar.addColorStop(0, "#1a2fa8"); bar.addColorStop(1, "#2fb4ff");
       c.fillStyle = bar; c.fillRect(px, py, pw, 12);
       c.fillStyle = "rgba(255,255,255,.97)"; c.fillRect(px, py + 12, pw, ph - 12);
       c.strokeStyle = "rgba(0,0,0,.25)"; c.lineWidth = 2; c.strokeRect(px, py, pw, ph);
-      c.textAlign = "left"; c.fillStyle = "#111";
-      var ty = py + 12 + 34;
-      if (l1) { fit(c, l1, "900", SANS, 38, 640, 20); fat(c, l1, px + 24, ty); ty += 54; }
-      if (l2) { fit(c, l2, "900", SANS, 38, 640, 20); fat(c, l2, px + 24, ty); }
+      c.textAlign = "left";
+      pl.forEach(function (p, k) {
+        fit(c, p[0], "900", SANS, 38, 640, 20); c.fillStyle = p[1];
+        fat(c, p[0], px + 24, py + 12 + 34 + k * 54);
+      });
     }
 
     var lines2 = [t.headline || "", t.sub || ""].filter(function (s) { return s; });
@@ -759,14 +763,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
   };
 
   var ORDER = ["news", "newsw", "newsr", "newst", "paper", "cctv", "dual"];
-  var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll"];
+  var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue"];
 
   /* ---------- state ---------- */
   var texts = {
     news: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
-    newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し", sub: "友人に見せるなどした疑い" },
+    newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し", sub: "友人に見せるなどした疑い" },
     led: { headline: "ようこそ 東京へ" },
     shibuya: { name: "SHIBUYA" },
     times: { name: "TOKYO", headline: "あなた", sub: "THE NEW PHOTO / THE GREATEST ME" },
