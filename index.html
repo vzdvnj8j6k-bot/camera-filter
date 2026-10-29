@@ -239,8 +239,10 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 
   <div class="sheet" id="shapeSheet">
     <label class="check"><input type="checkbox" id="sh-on">整形顔フィルター（顔を見つけて、目・あご・鼻などを変形）</label>
-    <div class="seg" id="shPresets" role="group" aria-label="仕上がりの強さ" style="grid-template-columns: repeat(3, 1fr)">
+    <div class="seg" id="shPresets" role="group" aria-label="仕上がりの強さ" style="grid-template-columns: repeat(2, 1fr)">
       <button type="button" data-p="natural">自然</button>
+      <button type="button" data-p="model">モデル風（女性）</button>
+      <button type="button" data-p="male">モデル風（男性）</button>
       <button type="button" data-p="plastic">整形顔</button>
       <button type="button" data-p="over">整形しすぎ</button>
     </div>
@@ -252,6 +254,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <label class="row" for="sh-skin" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">肌をつるつる<input type="range" id="sh-skin" min="0" max="100" value="30"><output id="sh-skinO">30</output></label>
     <label class="row" for="sh-bright" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">肌を白く<input type="range" id="sh-bright" min="0" max="100" value="20"><output id="sh-brightO">20</output></label>
     <label class="row" for="sh-gloss" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">つや（ハイライト）<input type="range" id="sh-gloss" min="0" max="100" value="0"><output id="sh-glossO">0</output></label>
+    <label class="row" for="sh-makeup" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">メイク（まつげ・チーク）<input type="range" id="sh-makeup" min="0" max="100" value="0"><output id="sh-makeupO">0</output></label>
     <p class="small" id="sh-msg">写真を選んでから、チェックを入れてください。顔を見つけるAIは端末内で動き、写真は送信されません（初回だけ、AIの部品をダウンロードします）。</p>
   </div>
 
@@ -341,12 +344,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   /* How the user's own photos are placed in a frame: crop position, or fit whole with a blurred fill. */
   var view = { fx: 0.5, fy: 0.4, contain: true };
   /* face-reshape filter: the warped copy of the main photo (valid while shaped.src is still the main photo) */
-  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0 } };
-  var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss"];
+  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0 } };
+  var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup"];
   var SHAPE_PRESETS = {
-    natural: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0 },
-    plastic: { eyes: 75, jaw: 80, face: 40, nose: 80, lips: 25, skin: 85, bright: 45, gloss: 40 },
-    over: { eyes: 100, jaw: 100, face: 65, nose: 100, lips: 50, skin: 100, bright: 70, gloss: 75 }
+    natural: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0 },
+    model: { eyes: 55, jaw: 55, face: 25, nose: 55, lips: 30, skin: 70, bright: 55, gloss: 35, makeup: 75 },
+    male: { eyes: 40, jaw: 70, face: 35, nose: 55, lips: 5, skin: 70, bright: 45, gloss: 25, makeup: 20 },
+    plastic: { eyes: 75, jaw: 80, face: 40, nose: 80, lips: 25, skin: 85, bright: 45, gloss: 40, makeup: 35 },
+    over: { eyes: 100, jaw: 100, face: 65, nose: 100, lips: 50, skin: 100, bright: 70, gloss: 75, makeup: 60 }
   };
   function cover(c, img, x, y, w, h) {
     var iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
@@ -2073,7 +2078,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
      tear-bag highlights, a bright nose ridge and tinted lips */
   function skinPass(srcCv, faces) {
     var v = shaped.vals;
-    if (!(v.skin > 0 || v.bright > 0 || v.gloss > 0 || v.eyes > 0 || v.lips > 0)) return srcCv;
+    if (!(v.skin > 0 || v.bright > 0 || v.gloss > 0 || v.eyes > 0 || v.lips > 0 || v.makeup > 0)) return srcCv;
     var w = srcCv.width, h = srcCv.height, out = document.createElement("canvas"); out.width = w; out.height = h;
     var g = out.getContext("2d"); g.drawImage(srcCv, 0, 0);
     var S = v.skin / 100 * 0.95, B = v.bright / 100, G = v.gloss / 100;
@@ -2112,7 +2117,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         if (wg < 0.02) continue;
         if (S > 0) { r += (bd[i] - r) * wg * S; gc += (bd[i + 1] - gc) * wg * S; bl += (bd[i + 2] - bl) * wg * S; }
         if (B > 0) {
-          var lift = 0.2 * B * wg, gain = 1 + 0.08 * B * wg;
+          var lift = 0.34 * B * wg, gain = 1 + 0.1 * B * wg;
           r = (r + (255 - r) * lift) * gain; gc = (gc + (255 - gc) * lift * 0.96) * gain; bl = (bl + (255 - bl) * lift * 0.9) * gain;
         }
         if (G > 0) {
@@ -2146,6 +2151,35 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
           stroke(offsetLine(lo, ew * 0.2), "rgba(255,246,240," + (0.5 * k) + ")", Math.max(3, fw * 0.016), fw * 0.004);
           stroke(offsetLine(lo, ew * 0.34), "rgba(120,70,60," + (0.28 * k) + ")", Math.max(2, fw * 0.006), fw * 0.003);
         });
+      }
+      var mk = v.makeup / 100;
+      if (mk > 0) {
+        /* cheek blush */
+        [[205, 1], [425, 1]].forEach(function (c) {
+          var p = pt(c[0]), r = fw * 0.2, gr = g.createRadialGradient(p.x, p.y + fw * 0.02, 0, p.x, p.y + fw * 0.02, r);
+          gr.addColorStop(0, "rgba(250,130,145," + (0.2 * mk) + ")"); gr.addColorStop(1, "rgba(250,130,145,0)");
+          g.save(); g.fillStyle = gr; g.fillRect(p.x - r, p.y - r, r * 2, r * 2 + fw * 0.04); g.restore();
+        });
+        /* lashes: short dark strokes fanning out from the upper lid, lighter ones under the eye */
+        [[[33, 246, 161, 160, 159, 158, 157, 173, 133], 468, [7, 163, 144, 145, 153, 154, 155]], [[362, 398, 384, 385, 386, 387, 388, 466, 263], 473, [382, 381, 380, 374, 373, 390, 249]]].forEach(function (eye) {
+          var ctr = lm[eye[1]] ? pt(eye[1]) : pt(eye[0][4]), ew2 = Math.hypot(pt(eye[0][0]).x - pt(eye[0][8]).x, pt(eye[0][0]).y - pt(eye[0][8]).y);
+          g.save(); g.lineCap = "round"; g.filter = "blur(" + Math.max(0.3, fw * 0.0012) + "px)";
+          eye[0].forEach(function (i, k) {
+            var p = pt(i), dx = p.x - ctr.x, dy = p.y - ctr.y, dl = Math.hypot(dx, dy) || 1, len = ew2 * (0.13 + 0.12 * Math.sin(Math.PI * k / 8)) * mk;
+            g.strokeStyle = "rgba(20,12,12," + (0.8 * mk) + ")"; g.lineWidth = Math.max(1.5, fw * 0.0042);
+            g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x + dx / dl * len, p.y + dy / dl * len - len * 0.35); g.stroke();
+          });
+          eye[2].forEach(function (i) {
+            var p = pt(i), dx = p.x - ctr.x, dy = p.y - ctr.y, dl = Math.hypot(dx, dy) || 1, len = ew2 * 0.07 * mk;
+            g.strokeStyle = "rgba(40,25,25," + (0.45 * mk) + ")"; g.lineWidth = Math.max(1, fw * 0.003);
+            g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x + dx / dl * len, p.y + dy / dl * len); g.stroke();
+          });
+          g.restore();
+        });
+        /* lip gloss: a soft highlight on the lower lip */
+        var lp = pt(17), lw2 = Math.hypot(pt(61).x - pt(291).x, pt(61).y - pt(291).y), lg = g.createRadialGradient(lp.x, lp.y - lw2 * 0.12, 0, lp.x, lp.y - lw2 * 0.12, lw2 * 0.3);
+        lg.addColorStop(0, "rgba(255,255,255," + (0.5 * mk) + ")"); lg.addColorStop(1, "rgba(255,255,255,0)");
+        g.save(); g.fillStyle = lg; g.fillRect(lp.x - lw2 * 0.3, lp.y - lw2 * 0.45, lw2 * 0.6, lw2 * 0.6); g.restore();
       }
       var l = v.lips / 100;
       if (l > 0) {
