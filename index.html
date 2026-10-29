@@ -249,6 +249,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       <button type="button" data-p="over">整形しすぎ</button>
       <button type="button" data-p="doll">ドール整形（ネタ）</button>
       <button type="button" data-p="vigor">ショートスリーパー</button>
+      <button type="button" data-p="smile">笑顔</button>
       <button type="button" data-p="sleepy">寝不足</button>
       <button type="button" data-p="chubby">ふっくら</button>
       <button type="button" data-p="heavy">太る（強）</button>
@@ -265,6 +266,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <label class="row" for="sh-doll" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">ドール感（描き込み）<input type="range" id="sh-doll" min="0" max="100" value="0"><output id="sh-dollO">0</output></label>
     <label class="row" for="sh-tired" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">寝不足感（クマ・充血）<input type="range" id="sh-tired" min="0" max="100" value="0"><output id="sh-tiredO">0</output></label>
     <label class="row" for="sh-vigor" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">元気（見開く目）<input type="range" id="sh-vigor" min="0" max="100" value="0"><output id="sh-vigorO">0</output></label>
+    <label class="row" for="sh-smile" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">笑顔（口角・頬）<input type="range" id="sh-smile" min="0" max="100" value="0"><output id="sh-smileO">0</output></label>
     <label class="row" for="sh-fat" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">顔をふっくら<input type="range" id="sh-fat" min="0" max="100" value="0"><output id="sh-fatO">0</output></label>
     <label class="row" for="sh-body" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">体を太く<input type="range" id="sh-body" min="0" max="100" value="0"><output id="sh-bodyO">0</output></label>
     <p class="small" id="sh-msg">写真を選んでから、チェックを入れてください。顔を見つけるAIは端末内で動き、写真は送信されません（初回だけ、AIの部品をダウンロードします）。</p>
@@ -356,9 +358,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   /* How the user's own photos are placed in a frame: crop position, or fit whole with a blurred fill. */
   var view = { fx: 0.5, fy: 0.4, contain: true };
   /* face-reshape filter: the warped copy of the main photo (valid while shaped.src is still the main photo) */
-  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 0, vigor: 0 } };
+  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 0, vigor: 0, smile: 0 } };
   var shapeAuto = false; /* true while the clinic frame has switched the filter on by itself */
-  var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup", "fat", "body", "doll", "tired", "vigor"];
+  var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup", "fat", "body", "doll", "tired", "vigor", "smile"];
   var SHAPE_PRESETS = {
     natural: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0 },
     model: { eyes: 55, jaw: 55, face: 25, nose: 55, lips: 30, skin: 70, bright: 55, gloss: 35, makeup: 75 },
@@ -366,7 +368,8 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     plastic: { eyes: 75, jaw: 80, face: 40, nose: 80, lips: 25, skin: 85, bright: 45, gloss: 40, makeup: 35 },
     over: { eyes: 100, jaw: 100, face: 65, nose: 100, lips: 50, skin: 100, bright: 70, gloss: 75, makeup: 60 },
     doll: { eyes: 80, jaw: 60, face: 30, nose: 70, lips: 75, skin: 100, bright: 80, gloss: 25, makeup: 70, fat: 0, body: 0, doll: 100 },
-    vigor: { eyes: 55, jaw: 0, face: 0, nose: 0, lips: 0, skin: 0, bright: 0, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 0, vigor: 100 },
+    vigor: { eyes: 55, jaw: 0, face: 0, nose: 0, lips: 0, skin: 0, bright: 0, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 0, vigor: 100, smile: 0 },
+    smile: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 0, bright: 0, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 0, vigor: 0, smile: 100 },
     sleepy: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 0, bright: 0, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 100 },
     chubby: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 15, bright: 0, gloss: 0, makeup: 0, fat: 55, body: 45 },
     heavy: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 15, bright: 0, gloss: 0, makeup: 0, fat: 75, body: 90 }
@@ -2172,11 +2175,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         H.push({ free: true, x: lo.x, y: lo.y, r: ew * 0.5, dx: 0, dy: ew * 0.15 * vgw });
         H.push({ free: true, x: br.x, y: br.y, r: ew * 0.8, dx: 0, dy: -ew * 0.2 * vgw });
       });
-      if (vgw > 0) {
+      var smw = (v.smile || 0) / 100;
+      if (smw > 0) {
         var mA = P(61), mB = P(291), mw = dist(mA, mB), sg = mA.x < mB.x ? 1 : -1;
-        H.push({ free: true, x: mA.x, y: mA.y, r: mw * 0.4, dx: -sg * mw * 0.12 * vgw, dy: -mw * 0.3 * vgw });
-        H.push({ free: true, x: mB.x, y: mB.y, r: mw * 0.4, dx: sg * mw * 0.12 * vgw, dy: -mw * 0.3 * vgw });
-        [205, 425].forEach(function (k) { var ck = P(k); H.push({ free: true, x: ck.x, y: ck.y, r: mw * 0.55, dx: 0, dy: -mw * 0.1 * vgw }); });
+        H.push({ free: true, x: mA.x, y: mA.y, r: mw * 0.4, dx: -sg * mw * 0.12 * smw, dy: -mw * 0.3 * smw });
+        H.push({ free: true, x: mB.x, y: mB.y, r: mw * 0.4, dx: sg * mw * 0.12 * smw, dy: -mw * 0.3 * smw });
+        [205, 425].forEach(function (k) { var ck = P(k); H.push({ free: true, x: ck.x, y: ck.y, r: mw * 0.55, dx: 0, dy: -mw * 0.1 * smw }); });
       }
       var trw = (v.tired || 0) / 100;
       if (trw > 0) [[468, 33, 133], [473, 362, 263]].forEach(function (a) {
