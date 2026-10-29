@@ -962,46 +962,39 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
   };
 
-  /* Clinic before/after ad: the untouched photo on the left, the face-filtered photo on the right (the filter is switched on by this frame) */
-  F.clinic = { name: "整形ビフォーアフター(横長)", size: [1280, 720], fields: { name: "クリニック名", headline: "キャッチコピー", tag: "左のラベル", tag2: "右のラベル", sub: "下の帯の文字", place: "ボタンの文字", when: "注釈（下の小さな文字）" } };
+  /* Short-video screen: the face-filtered photo full screen, a big outlined caption on top, and like / dislike / comment buttons on the right.
+     Choosing this frame switches the face filter on (doll preset) and leaving it switches the filter off again. */
+  F.clinic = { name: "整形顔フィルター(縦)", fields: { headline: "上の大きな文字（改行できます）", place: "高評価の数", tag2: "「低く評価」の文字", when: "コメントの数", name: "左下のユーザー名", sub: "左下の説明" } };
   F.clinic.draw = function (c, S) {
-    var w = 1280, h = 720, t = S.t, left = S.orig, right = S.shp || S.orig;
-    c.save(); c.beginPath(); c.rect(0, 0, 638, h); c.clip(); cover(c, left, 0, 0, 638, h); c.restore();
-    c.save(); c.beginPath(); c.rect(642, 0, 638, h); c.clip(); cover(c, right, 642, 0, 638, h); c.restore();
-    c.fillStyle = "#fff"; c.fillRect(638, 0, 4, h);
-    c.textBaseline = "middle"; c.textAlign = "center";
-    var tg = c.createLinearGradient(0, 0, 0, 170); tg.addColorStop(0, "rgba(255,255,255,.94)"); tg.addColorStop(0.75, "rgba(255,255,255,.7)"); tg.addColorStop(1, "rgba(255,255,255,0)");
-    c.fillStyle = tg; c.fillRect(0, 0, w, 170);
-    if (t.name) { fit(c, t.name, "700", SANS, 28, 900, 16); c.fillStyle = "#8a5a2b"; c.fillText(t.name, w / 2, 34); }
-    if (t.headline) {
-      fit(c, t.headline, "900", SANS, 60, 1100, 28);
-      c.lineJoin = "round"; c.lineWidth = 12; c.strokeStyle = "#fff"; c.strokeText(t.headline, w / 2, 96);
-      c.fillStyle = "#b0305c"; c.fillText(t.headline, w / 2, 96);
-    }
-    function chip(label, x, grad) {
-      if (!label) return;
-      fit(c, label, "900", SANS, 34, 520, 18);
-      var cw = c.measureText(label).width + 44, g2 = c.createLinearGradient(x, 0, x + cw, 0);
-      g2.addColorStop(0, grad[0]); g2.addColorStop(1, grad[1]);
-      c.fillStyle = g2; rr(c, x, 540, cw, 58, 10); c.fill();
-      c.fillStyle = "#fff"; c.textAlign = "left"; c.fillText(label, x + 22, 570); c.textAlign = "center";
-    }
-    chip(t.tag, 24, ["#4a4a55", "#2b2b33"]);
-    chip(t.tag2, 666, ["#d94a7a", "#b0305c"]);
-    /* centre arrow */
-    c.save(); c.shadowColor = "rgba(0,0,0,.4)"; c.shadowBlur = 14; c.fillStyle = "#d8b26a"; c.beginPath(); c.arc(640, 360, 46, 0, Math.PI * 2); c.fill(); c.restore();
-    c.fillStyle = "#fff"; c.beginPath(); c.moveTo(624, 336); c.lineTo(660, 360); c.lineTo(624, 384); c.closePath(); c.fill();
-    /* bottom band */
-    var bg = c.createLinearGradient(0, 620, w, 620); bg.addColorStop(0, "#3b1f4a"); bg.addColorStop(1, "#b0305c");
-    c.fillStyle = bg; c.fillRect(0, 618, w, 102);
-    if (t.sub) { fit(c, t.sub, "900", SANS, 38, 760, 20); c.fillStyle = "#fff"; c.textAlign = "left"; c.fillText(t.sub, 40, 658); c.textAlign = "center"; }
-    if (t.place) {
-      fit(c, t.place, "900", SANS, 32, 380, 18);
-      var bw2 = c.measureText(t.place).width + 56, bx = w - 40 - bw2;
-      c.fillStyle = "#d8b26a"; rr(c, bx, 632, bw2, 52, 26); c.fill();
-      c.fillStyle = "#3b1f4a"; c.fillText(t.place, bx + bw2 / 2, 659);
-    }
-    if (t.when) { fit(c, t.when, "500", SANS, 18, 1180, 12); c.fillStyle = "rgba(255,255,255,.82)"; c.fillText(t.when, w / 2, 703); }
+    var w = W, h = H, t = S.t, photo = S.shp || S.main;
+    c.filter = "contrast(1.03)"; cover(c, photo, 0, 0, w, h); c.filter = "none";
+    var tg = c.createLinearGradient(0, 0, 0, 420); tg.addColorStop(0, "rgba(0,0,0,.35)"); tg.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = tg; c.fillRect(0, 0, w, 420);
+    var bgr = c.createLinearGradient(0, h - 380, 0, h); bgr.addColorStop(0, "rgba(0,0,0,0)"); bgr.addColorStop(1, "rgba(0,0,0,.55)");
+    c.fillStyle = bgr; c.fillRect(0, h - 380, w, 380);
+    c.textBaseline = "middle"; c.textAlign = "center"; c.lineJoin = "round";
+    /* caption on top: white with a thick dark outline */
+    var lines = String(t.headline || "").split("\n").filter(function (s) { return s.length; }), fsz = 96, k;
+    lines.forEach(function (s) { fsz = Math.min(fsz, fit(c, s, "900", SANS, 96, w - 200, 40)); });
+    c.font = "900 " + fsz + "px " + SANS;
+    lines.forEach(function (s, i) {
+      var y = 130 + i * (fsz * 1.2);
+      c.lineWidth = Math.max(12, fsz * 0.16); c.strokeStyle = "#111"; c.strokeText(s, w / 2, y);
+      c.fillStyle = "#fff"; c.fillText(s, w / 2, y);
+    });
+    /* right-side buttons */
+    var bx = w - 96, items = [["👍", t.place, 760], ["👎", t.tag2, 930], ["💬", t.when, 1100], ["↪", "", 1250]];
+    items.forEach(function (it) {
+      c.save(); c.shadowColor = "rgba(0,0,0,.55)"; c.shadowBlur = 10;
+      c.font = "700 70px " + SANS; c.fillStyle = "#fff"; c.fillText(it[0], bx, it[2]); c.restore();
+      if (it[1]) { fit(c, it[1], "700", SANS, 34, 150, 20); c.save(); c.shadowColor = "rgba(0,0,0,.6)"; c.shadowBlur = 8; c.fillStyle = "#fff"; c.fillText(it[1], bx, it[2] + 66); c.restore(); }
+    });
+    /* bottom-left: user name and description */
+    c.textAlign = "left";
+    if (t.name) { fit(c, t.name, "700", SANS, 40, 700, 22); c.save(); c.shadowColor = "rgba(0,0,0,.7)"; c.shadowBlur = 8; c.fillStyle = "#fff"; c.fillText(t.name, 44, h - 150); c.restore(); }
+    if (t.sub) { fit(c, t.sub, "500", SANS, 34, 800, 20); c.save(); c.shadowColor = "rgba(0,0,0,.7)"; c.shadowBlur = 8; c.fillStyle = "rgba(255,255,255,.95)"; c.fillText(t.sub, 44, h - 96); c.restore(); }
+    c.fillStyle = "rgba(255,255,255,.35)"; c.fillRect(0, h - 8, w, 8); c.fillStyle = "#fff"; c.fillRect(0, h - 8, w * 0.38, 8);
+    c.textAlign = "center";
   };
 
   var ORDER = ["news", "newsw", "newsr", "newst", "newsd", "paper", "cctv", "clinic", "dual"];
@@ -1013,7 +1006,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
-    clinic: { name: "ビフォーアフター美容クリニック", headline: "なりたい顔に、なれる。", tag: "BEFORE 施術前", tag2: "AFTER 施術後", sub: "無料カウンセリング受付中", place: "ご予約はこちら", when: "※効果には個人差があります。写真はイメージです。" },
+    clinic: { headline: "整形顔フィルターを\n使ってみたｗ", place: "9.6万", tag2: "低く評価", when: "718", name: "@フレーム劇場", sub: "#整形顔フィルター #ネタ" },
     newsd: { name: "NEWS 24", tag: "速報", headline: "本日の主役は", red: "あなた", sub: "に決定", time: "あなた", suf: "容疑者(19)", time2: "友人", suf2: "容疑者(20)" },
     led: { headline: "ようこそ 東京へ" },
     shibuya: { name: "SHIBUYA" },
@@ -1032,7 +1025,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newst: ["name", "tag", "place", "time", "headline"],
     newsd: ["tag", "headline", "time", "time2"],
-    clinic: ["name", "headline", "tag", "tag2", "sub", "place"]
+    clinic: ["headline", "place", "tag2", "when"]
   };
   var RICH_KEYS = { news: ["headline"], newsw: ["headline"], newst: ["headline", "tag", "place", "red", "blue"] };
   function placeholder(k) { return "　　　" + new Array(FIELD_KEYS.indexOf(k) + 2).join("​"); }
@@ -1112,6 +1105,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   function render() {
     var id = state.cur;
     regions = []; ctx.fillText = recordText; ctx.strokeText = strokeHook;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = "none"; ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.restore();
     try { F[id].draw(ctx, S(id)); } finally { delete ctx.fillText; delete ctx.strokeText; }
     resolveRegionKeys();
     var badgeOn = !!(shaped.on && shaped.canvas && shaped.src === state.main);
@@ -1519,7 +1513,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
-    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw") && k === "headline";
+    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw" || state.cur === "clinic") && k === "headline";
     if (rich) {
       /* WYSIWYG: a contenteditable box where coloured text is shown in its colour (the ⟦色:…⟧ markup stays hidden) */
       var ce = document.createElement("div");
