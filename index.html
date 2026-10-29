@@ -248,6 +248,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
       <button type="button" data-p="plastic">整形顔</button>
       <button type="button" data-p="over">整形しすぎ</button>
       <button type="button" data-p="doll">ドール整形（ネタ）</button>
+      <button type="button" data-p="sleepy">ショートスリーパー</button>
       <button type="button" data-p="chubby">ふっくら</button>
       <button type="button" data-p="heavy">太る（強）</button>
     </div>
@@ -261,6 +262,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     <label class="row" for="sh-gloss" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">つや（ハイライト）<input type="range" id="sh-gloss" min="0" max="100" value="0"><output id="sh-glossO">0</output></label>
     <label class="row" for="sh-makeup" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">メイク（まつげ・チーク）<input type="range" id="sh-makeup" min="0" max="100" value="0"><output id="sh-makeupO">0</output></label>
     <label class="row" for="sh-doll" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">ドール感（描き込み）<input type="range" id="sh-doll" min="0" max="100" value="0"><output id="sh-dollO">0</output></label>
+    <label class="row" for="sh-tired" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">寝不足感（クマ・充血）<input type="range" id="sh-tired" min="0" max="100" value="0"><output id="sh-tiredO">0</output></label>
     <label class="row" for="sh-fat" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">顔をふっくら<input type="range" id="sh-fat" min="0" max="100" value="0"><output id="sh-fatO">0</output></label>
     <label class="row" for="sh-body" style="grid-template-columns: 6.5em minmax(0, 1fr) 3em">体を太く<input type="range" id="sh-body" min="0" max="100" value="0"><output id="sh-bodyO">0</output></label>
     <p class="small" id="sh-msg">写真を選んでから、チェックを入れてください。顔を見つけるAIは端末内で動き、写真は送信されません（初回だけ、AIの部品をダウンロードします）。</p>
@@ -352,9 +354,9 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   /* How the user's own photos are placed in a frame: crop position, or fit whole with a blurred fill. */
   var view = { fx: 0.5, fy: 0.4, contain: true };
   /* face-reshape filter: the warped copy of the main photo (valid while shaped.src is still the main photo) */
-  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0 } };
+  var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 0 } };
   var shapeAuto = false; /* true while the clinic frame has switched the filter on by itself */
-  var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup", "fat", "body", "doll"];
+  var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup", "fat", "body", "doll", "tired"];
   var SHAPE_PRESETS = {
     natural: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0 },
     model: { eyes: 55, jaw: 55, face: 25, nose: 55, lips: 30, skin: 70, bright: 55, gloss: 35, makeup: 75 },
@@ -362,6 +364,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     plastic: { eyes: 75, jaw: 80, face: 40, nose: 80, lips: 25, skin: 85, bright: 45, gloss: 40, makeup: 35 },
     over: { eyes: 100, jaw: 100, face: 65, nose: 100, lips: 50, skin: 100, bright: 70, gloss: 75, makeup: 60 },
     doll: { eyes: 80, jaw: 60, face: 30, nose: 70, lips: 75, skin: 100, bright: 80, gloss: 25, makeup: 70, fat: 0, body: 0, doll: 100 },
+    sleepy: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 0, bright: 0, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 100 },
     chubby: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 15, bright: 0, gloss: 0, makeup: 0, fat: 55, body: 45 },
     heavy: { eyes: 0, jaw: 0, face: 0, nose: 0, lips: 0, skin: 15, bright: 0, gloss: 0, makeup: 0, fat: 75, body: 90 }
   };
@@ -2117,6 +2120,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         var c = lm[a[0]] ? P(a[0]) : { x: (P(a[1]).x + P(a[2]).x) / 2, y: (P(a[1]).y + P(a[2]).y) / 2 };
         H.push({ x: c.x, y: c.y, r: dist(P(a[1]), P(a[2])) * 1.3, s: 0.6 * e + 0.1 * (v.doll || 0) / 100 });
       });
+      var trw = (v.tired || 0) / 100;
+      if (trw > 0) [[468, 33, 133], [473, 362, 263]].forEach(function (a) {
+        var c = lm[a[0]] ? P(a[0]) : { x: (P(a[1]).x + P(a[2]).x) / 2, y: (P(a[1]).y + P(a[2]).y) / 2 };
+        H.push({ free: true, x: c.x, y: c.y, r: dist(P(a[1]), P(a[2])) * 1.25, s: -0.16 * trw });
+      });
       if (j > 0) {
         [[234, 93, 132, 58, 172, 136, 150, 149, 176, 148], [454, 323, 361, 288, 397, 365, 379, 378, 400, 377]].forEach(function (arr) {
           arr.forEach(function (i, k) {
@@ -2247,10 +2255,10 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
      tear-bag highlights, a bright nose ridge and tinted lips */
   function skinPass(srcCv, faces) {
     var v = shaped.vals;
-    if (!(v.skin > 0 || v.bright > 0 || v.gloss > 0 || v.eyes > 0 || v.lips > 0 || v.makeup > 0 || v.doll > 0)) return srcCv;
+    if (!(v.skin > 0 || v.bright > 0 || v.gloss > 0 || v.eyes > 0 || v.lips > 0 || v.makeup > 0 || v.doll > 0 || v.tired > 0)) return srcCv;
     var w = srcCv.width, h = srcCv.height, out = document.createElement("canvas"); out.width = w; out.height = h;
     var g = out.getContext("2d"); g.drawImage(srcCv, 0, 0);
-    var S = v.skin / 100 * 0.95, B = v.bright / 100, G = v.gloss / 100;
+    var S = v.skin / 100 * 0.95, B = v.bright / 100, G = v.gloss / 100, T = (v.tired || 0) / 100;
     var img = g.getImageData(0, 0, w, h), d = img.data, bd = null;
     if (S > 0) {
       var f0 = faces[0], fw0 = Math.hypot((f0[234].x - f0[454].x) * w, (f0[234].y - f0[454].y) * h);
@@ -2294,6 +2302,10 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
           for (var q = 0; q < spots.length; q++) { var sp = spots[q], dd = Math.hypot(x - sp.x, y - sp.y) / sp.r; if (dd < 1) { var tt = 1 - dd; gs += sp.k * tt * tt; } }
           gs = Math.min(0.85, gs) * G * wg;
           r += (255 - r) * gs; gc += (255 - gc) * gs; bl += (255 - bl) * gs * 0.95;
+        }
+        if (T > 0) {
+          var lum = 0.3 * r + 0.59 * gc + 0.11 * bl, dk = 1 - 0.09 * T * wg, nz = (Math.sin(x * 12.9898 + y * 78.233) * 43758.5453); nz = (nz - Math.floor(nz) - 0.5) * 11 * T * wg;
+          r = (r + (lum * 1.04 + 4 - r) * 0.28 * T * wg) * dk + nz; gc = (gc + (lum * 0.95 + 2 - gc) * 0.3 * T * wg) * dk + nz; bl = (bl + (lum * 0.84 - bl) * 0.3 * T * wg) * dk + nz;
         }
         d[i] = r; d[i + 1] = gc; d[i + 2] = bl;
       }
@@ -2372,6 +2384,35 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
         g.save(); g.filter = "blur(" + Math.max(1, fw * 0.003) + "px)"; g.fillStyle = "rgba(214,60,48," + (0.62 * dl) + ")";
         g.beginPath(); LIPS.forEach(function (i, k) { var p = pt(i); if (k) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); g.fill(); g.restore();
         stroke(pts(LIPS).concat([pt(LIPS[0])]), "rgba(90,28,28," + (0.85 * dl) + ")", Math.max(2.5, fw * 0.007), fw * 0.001);
+      }
+      var tr = (v.tired || 0) / 100;
+      if (tr > 0) {
+        var ewt = Math.hypot(pt(33).x - pt(133).x, pt(33).y - pt(133).y);
+        function rnd(n) { var q = Math.sin(n * 91.7 + 13.3) * 10000; return q - Math.floor(q); }
+        [[33, 133, [33, 7, 163, 144, 145, 153, 154, 155, 133], LEYE, 0], [362, 263, [362, 382, 381, 380, 374, 373, 390, 249, 263], REYE, 40]].forEach(function (ey) {
+          var a = pt(ey[0]), b = pt(ey[1]), mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, cy2 = my + ewt * 0.42;
+          /* dark circle under the eye */
+          g.save(); g.globalCompositeOperation = "multiply"; g.filter = "blur(" + Math.max(2, Math.round(fw * 0.012)) + "px)";
+          g.translate(mx, cy2); g.scale(1, 0.55);
+          var grd = g.createRadialGradient(0, 0, 0, 0, 0, ewt * 1.0);
+          grd.addColorStop(0, "rgba(80,40,78," + (1.0 * tr) + ")"); grd.addColorStop(0.6, "rgba(112,70,96," + (0.7 * tr) + ")"); grd.addColorStop(1, "rgba(165,125,135,0)");
+          g.fillStyle = grd; g.fillRect(-ewt, -ewt, ewt * 2, ewt * 2); g.restore();
+          /* red, bloodshot eye: a red tint over the eye and thin red veins from both corners */
+          g.save(); g.globalCompositeOperation = "multiply"; g.fillStyle = "rgba(240,150,150," + (0.6 * tr) + ")"; g.beginPath();
+          ey[3].forEach(function (i, k) { var p = pt(i); if (k) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); g.fill(); g.restore();
+          g.save(); g.strokeStyle = "rgba(196,40,50," + (0.38 * tr) + ")"; g.lineWidth = Math.max(1, fw * 0.0013); g.lineCap = "round";
+          [a, b].forEach(function (cn, ci) {
+            for (var q = 0; q < 4; q++) {
+              var sd = ey[4] + ci * 7 + q, t1 = 0.22 + rnd(sd) * 0.2, ex = cn.x + (mx - cn.x) * t1, ey2 = cn.y + (my - cn.y) * t1 + (rnd(sd + 3) - 0.5) * ewt * 0.3;
+              g.beginPath(); g.moveTo(cn.x, cn.y + (rnd(sd + 5) - 0.5) * ewt * 0.12); g.quadraticCurveTo((cn.x + ex) / 2, (cn.y + ey2) / 2 + (rnd(sd + 9) - 0.5) * ewt * 0.25, ex, ey2); g.stroke();
+            }
+          });
+          g.restore();
+          stroke(offsetLine(ey[2], ewt * 0.13), "rgba(215,90,100," + (0.22 * tr) + ")", Math.max(2, fw * 0.01), fw * 0.006);
+        });
+        /* pale, dry lips */
+        g.save(); g.filter = "blur(" + Math.max(1, Math.round(fw * 0.004)) + "px)"; g.fillStyle = "rgba(150,116,110," + (0.34 * tr) + ")"; g.beginPath();
+        LIPS.forEach(function (i, k) { var p = pt(i); if (k) g.lineTo(p.x, p.y); else g.moveTo(p.x, p.y); }); g.closePath(); g.fill(); g.restore();
       }
       var l = v.lips / 100;
       if (l > 0) {
