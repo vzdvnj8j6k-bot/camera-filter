@@ -140,6 +140,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
 .ep-sw { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #555; padding: 0; cursor: pointer; flex: none; }
 .ep-sw.std { width: auto; border-radius: 999px; padding: 0 12px; background: #2c2c2e; color: #fff; font-family: inherit; font-size: 0.78rem; }
 .ep-sw.on { border-color: #ffd000; box-shadow: 0 0 0 2px #ffd000; }
+textarea.ep-input { width: 100%; min-height: 84px; font-family: var(--font-body); font-size: 16px; font-weight: 700; line-height: 1.5; border: 0; border-radius: 12px; background: #fff; color: #111; padding: 10px 14px; resize: none; }
 input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius: 12px; background: #fff; color: #111; padding: 0 14px; }
 @media (prefers-reduced-motion: reduce) { .edit-hl { animation: none; } }
 #miniCv {
@@ -769,10 +770,13 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 
     c.font = "700 52px " + SANS;
     var lines2 = [], cur2 = "";
-    Array.from(t.headline || "").forEach(function (ch) {
-      if (cur2 && c.measureText(cur2 + ch).width > 880) { lines2.push(cur2); cur2 = ch; } else cur2 += ch;
+    String(t.headline || "").split("\n").forEach(function (par) {
+      cur2 = "";
+      Array.from(par).forEach(function (ch) {
+        if (cur2 && c.measureText(cur2 + ch).width > 880) { lines2.push(cur2); cur2 = ch; } else cur2 += ch;
+      });
+      if (cur2) lines2.push(cur2);
     });
-    if (cur2) lines2.push(cur2);
     var bottom = h - 34, bh = lines2.length ? 22 + lines2.length * 66 : 0, by = bottom - bh;
     var maxw = 0;
     lines2.forEach(function (s) { fit(c, s, "700", SANS, 52, 1000, 28); maxw = Math.max(maxw, c.measureText(s).width); });
@@ -1219,11 +1223,16 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     paintSwatches();
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
-    inp.value = texts[state.cur][k] || ""; inp.placeholder = label; inp.setAttribute("aria-label", label);
+    var multi = state.cur === "newst" && k === "headline";
+    if (multi) {
+      var ta = document.createElement("textarea");
+      ta.className = "ep-input"; ta.rows = 2; inp.parentNode.replaceChild(ta, inp); inp = ta;
+    }
+    inp.value = texts[state.cur][k] || ""; inp.placeholder = multi ? label + "（改行できます）" : label; inp.setAttribute("aria-label", label);
     inp.addEventListener("input", function () {
       texts[state.cur][k] = inp.value; $("f-" + k).value = inp.value; redraw(); updateHl(); buildChips();
     });
-    inp.addEventListener("keydown", function (ev) { if (ev.key === "Enter" || ev.key === "Escape") closeEditor(); });
+    inp.addEventListener("keydown", function (ev) { if (ev.key === "Escape" || (ev.key === "Enter" && !multi)) closeEditor(); });
     editor.querySelector(".ep-done").addEventListener("click", closeEditor);
     document.body.appendChild(editor);
     if (vv) { vv.addEventListener("resize", placePanel); vv.addEventListener("scroll", placePanel); }
