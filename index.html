@@ -210,6 +210,26 @@ canvas#cv { margin: 0 auto; }
 #shPresets [data-p="chubby"]::before { content: "😊"; } #shPresets [data-p="heavy"]::before { content: "🍔"; }
 .fcard { width: 88px; } .fcard canvas { width: 88px; height: 117px; }
 .fcard[aria-pressed="true"] canvas { outline-color: #4cc3ff; }
+
+/* native-camera look: big shutter with a gallery thumbnail on the left and a camera button on the right, text-only mode strip underneath */
+.shutterrow { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; max-width: 440px; margin: 8px auto 2px; padding: 0 22px; }
+.shutterrow .pick { justify-self: start; }
+.shutterrow .pick > span:last-child { display: none; }
+.shutterrow .pick .thumb { width: 58px; height: 58px; border-radius: 50%; border: 2px solid #3a3a3c; }
+.shutterbtn { width: 80px; height: 80px; border-radius: 50%; border: 4px solid #fff; background: transparent; padding: 0; display: grid; place-items: center; cursor: pointer; }
+.shutterbtn i { display: block; width: 62px; height: 62px; border-radius: 50%; background: #f5f5f0; transition: all 0.15s; }
+.shutterbtn:active i { transform: scale(0.9); }
+.shutterbtn.live i { background: #ff3b30; }
+.shutterbtn.rec i { width: 32px; height: 32px; border-radius: 9px; }
+.flipbtn { justify-self: end; width: 60px; height: 60px; border-radius: 50%; border: 0; background: #2a2a2c; color: #fff; display: grid; place-items: center; cursor: pointer; }
+.flipbtn svg { width: 28px; height: 28px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.flipbtn.on { background: #fff; color: #000; }
+.tabs { justify-content: center; gap: 4px; padding: 10px 12px 14px; }
+.tab { flex: 0 0 auto; min-width: 0; padding: 6px 14px; font-size: 0.95rem; font-weight: 500; }
+.tab svg { display: none; }
+.tab[aria-selected="true"] { color: #fff; font-weight: 700; }
+.tab[aria-selected="true"] svg { stroke: currentColor; }
+canvas#cv { border-radius: 12px; }
 </style>
 
 
@@ -252,11 +272,7 @@ canvas#cv { margin: 0 auto; }
       <div class="ph"><button type="button" class="pbtn" id="pClose" aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><span id="pTitle">枠</span><button type="button" class="pbtn" id="pOk" aria-label="決定"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></button></div>
       <div class="pbody" id="pbody">
         <div class="pickrow" data-tab="photo">
-        <button class="pick" type="button" id="dropMain" aria-label="写真を選ぶ">
-          <span class="thumb" id="thumbMain"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg></span>
-          <span id="mainLabel">写真</span>
-        </button>
-        <button class="pick off" type="button" id="dropSub" aria-label="インセット写真を選ぶ">
+                <button class="pick off" type="button" id="dropSub" aria-label="インセット写真を選ぶ">
           <span class="thumb" id="thumbSub"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4 21c1-4.5 4-6 8-6s7 1.5 8 6"/></svg></span>
           自撮り
         </button>
@@ -394,6 +410,14 @@ canvas#cv { margin: 0 auto; }
   </div>
 
       </div>
+    </div>
+    <div class="shutterrow">
+      <button class="pick" type="button" id="dropMain" aria-label="写真を選ぶ">
+        <span class="thumb" id="thumbMain"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg></span>
+        <span id="mainLabel">写真</span>
+        </button>
+      <button class="shutterbtn" type="button" id="shutterBtn" aria-label="保存・録画"><i></i></button>
+      <button class="flipbtn" type="button" id="camFlip" aria-label="カメラを使う"><svg viewBox="0 0 24 24"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M20 15v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/><path d="m17 6 3 3 3-3"/><path d="m7 18-3-3-3 3"/></svg></button>
     </div>
   <div class="tabs" id="tabs" role="tablist">
     <button class="tab" type="button" role="tab" data-tab="frames" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><rect x="7" y="14" width="10" height="4" rx="1"/></svg>枠</button>
@@ -2289,23 +2313,28 @@ canvas#cv { margin: 0 auto; }
     cam.stream = null; animSec = undefined;
     if (cam.savedMain) { state.main = cam.savedMain; view.contain = cam.savedContain; cam.savedMain = null; }
     $("camStart").textContent = "カメラを起動"; $("camRec").disabled = true; $("camRec").textContent = "録画開始";
+    $("shutterBtn").classList.remove("live", "rec"); $("camFlip").classList.remove("on");
     redraw();
   }
   $("camStart").onclick = async function () {
+    if (cam.starting) return;
     if (cam.stream) { camStop(); return; }
+    cam.starting = true;
     if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { $("msg").textContent = "この画面ではカメラを使えません。公開ページを、ブラウザで直接開いてください。"; return; }
     try {
       try { cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: true }); }
       catch (e0) { cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } }); }
-    } catch (e) { $("msg").textContent = "カメラを使えませんでした。ブラウザのカメラの許可を確認してください。"; return; }
+    } catch (e) { cam.starting = false; $("msg").textContent = "カメラを使えませんでした。ブラウザのカメラの許可を確認してください。"; return; }
     var fm = (cam.stream.getVideoTracks()[0].getSettings() || {}).facingMode; cam.mirror = fm !== "environment";
     cam.video = cam.video || document.createElement("video"); cam.video.playsInline = true; cam.video.muted = true; cam.video.srcObject = cam.stream;
     await cam.video.play().catch(function () {});
+    cam.starting = false;
     cam.cv = cam.cv || document.createElement("canvas");
     cam.savedMain = state.main; cam.savedContain = view.contain;
     $("camStart").textContent = "カメラを止める"; $("camRec").disabled = false;
     $("msg").textContent = "カメラを起動しました。「録画開始」で撮影できます。";
     camLoop();
+    $("shutterBtn").classList.add("live"); $("camFlip").classList.add("on");
   };
   $("camRec").onclick = function () {
     if (!cam.stream) return;
@@ -2320,8 +2349,8 @@ canvas#cv { margin: 0 auto; }
     catch (e) { $("msg").textContent = "録画を開始できませんでした。"; return; }
     cam.rec = r; cam.t0 = performance.now();
     r.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
-    r.onstop = function () { cam.rec = null; $("camRec").textContent = "録画開始"; finishVideo(new Blob(chunks, { type: r.mimeType || mime || "video/webm" }), r.mimeType || mime || "video/webm", ""); };
-    r.start(1000); $("camRec").textContent = "録画を止めて保存"; $("msg").textContent = "録画中です。";
+    r.onstop = function () { cam.rec = null; $("shutterBtn").classList.remove("rec"); $("camRec").textContent = "録画開始"; finishVideo(new Blob(chunks, { type: r.mimeType || mime || "video/webm" }), r.mimeType || mime || "video/webm", ""); };
+    r.start(1000); $("shutterBtn").classList.add("rec"); $("camRec").textContent = "録画を止めて保存"; $("msg").textContent = "録画中です。";
   };
   /* the frame's graphics alone on a transparent background, for use as an overlay (e.g. in TikTok Effect House) */
   $("ovPng").onclick = function () {
@@ -2985,6 +3014,8 @@ canvas#cv { margin: 0 auto; }
   };
 
   $("saveTop").onclick = function () { $("save").onclick(); };
+  $("shutterBtn").onclick = function () { if (cam.stream) $("camRec").onclick(); else $("save").onclick(); };
+  $("camFlip").onclick = function () { $("camStart").onclick(); };
 
   /* persistence: texts, colors, settings in localStorage; photos in IndexedDB, so a reload keeps the work */
   var STORE_KEY = "dualshot.v1", defaults = JSON.parse(JSON.stringify(texts)), saveTimer = null, blobs = { main: null, sub: null };
