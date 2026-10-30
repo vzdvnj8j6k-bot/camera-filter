@@ -21,7 +21,7 @@
   --accent: #ffffff;
   --accent-fg: #000000;
   --focus: #8fb0ff;
-  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --font-body: "BIZ UDPGothic", "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, Consolas, monospace;
   color-scheme: dark;
 }
@@ -485,7 +485,7 @@ header { height: 48px; }
 (function () {
   var W = 1080, H = 1440;
   var SANS = '"BIZ UDPGothic","Hiragino Kaku Gothic ProN","ヒラギノ角ゴ ProN W3","Noto Sans JP","Zen Kaku Gothic New","Yu Gothic","メイリオ",sans-serif';
-  var SERIF = '"Noto Serif JP","Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif';
+  var SERIF = '"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif';
   var MONO = '"DM Mono",ui-monospace,Consolas,monospace';
   var cv = document.getElementById("cv");
   var ctx = cv.getContext("2d");
@@ -3264,7 +3264,7 @@ header { height: 48px; }
   drawThumbs();
   if (document.fonts && document.fonts.load) {
     Promise.all([
-      document.fonts.load('900 40px "Zen Kaku Gothic New"'), document.fonts.load('700 40px "Zen Kaku Gothic New"'),
+      document.fonts.load('700 40px "BIZ UDPGothic"'), document.fonts.load('900 40px "Zen Kaku Gothic New"'), document.fonts.load('700 40px "Zen Kaku Gothic New"'),
       document.fonts.load('900 40px "Noto Serif JP"'), document.fonts.load('700 40px "Noto Serif JP"'), document.fonts.load('900 40px "Noto Sans JP"'), document.fonts.load('700 40px "Noto Sans JP"'),
       document.fonts.load('500 40px "DM Mono"')
     ]).then(function () { render(); drawThumbs(); }).catch(function () {});
