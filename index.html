@@ -989,9 +989,10 @@ header { height: 48px; }
     c.fillStyle = bg; c.fillRect(0, 632, w, 88);
     c.fillStyle = "rgba(255,255,255,.3)"; c.fillRect(0, 632, w, 2);
     if (t.headline) {
-      fit(c, t.headline, "900", SANS, 60, w - 96, 28);
+      var hsz = fit(c, t.headline, "900", '"Noto Sans JP","BIZ UDPGothic","Hiragino Kaku Gothic ProN",sans-serif', 60, w - 96, 28);
+      c.letterSpacing = Math.round(hsz * -0.03) + "px";
       c.lineJoin = "round"; c.lineWidth = 7; c.strokeStyle = "#0c2a6e"; c.strokeText(t.headline, 48, 678);
-      c.fillStyle = "#fff"; c.strokeStyle = "#fff"; c.lineWidth = 2.6; c.strokeText(t.headline, 48, 678); c.fillText(t.headline, 48, 678);
+      c.fillStyle = "#fff"; c.strokeStyle = "#fff"; c.lineWidth = 1.4; c.strokeText(t.headline, 48, 678); c.fillText(t.headline, 48, 678); c.letterSpacing = "0px";
     }
   };
 
