@@ -1043,7 +1043,11 @@ header { height: 48px; }
       c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 14; c.shadowOffsetY = 4;
       rr(c, 800, 400, 90, bh, 8); c.fillStyle = "rgba(255,255,255,.97)"; c.fill(); c.shadowColor = "transparent";
       c.textAlign = "center"; c.fillStyle = "#1a2a55";
-      chars.forEach(function (ch, n) { c.font = "900 46px " + SANS; c.fillText(ch, 845, 400 + 22 + step / 2 + n * step); });
+      chars.forEach(function (ch, n) {
+        c.font = "900 46px " + SANS; c.fillText(ch, 845, 400 + 22 + step / 2 + n * step);
+        /* each character is its own text run: tie them all to this field so a tap opens its editor */
+        if (c.fillText === recordText && regions.length) regions[regions.length - 1].fk = "place";
+      });
       c.restore();
     }
 
