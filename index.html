@@ -1427,7 +1427,7 @@ header { height: 48px; }
   var state = { cur: "news", main: sample("main"), sub: sample("sub") };
 
   /* empty text must not make the frame's boxes vanish: an invisible placeholder keeps each box drawn (and tappable) */
-  var EXAMPLES = JSON.parse(JSON.stringify(texts)), noEx = false;
+  var EXAMPLES = JSON.parse(JSON.stringify(texts)), noEx = false, curEx = [];
   var KEEP = {
     news: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
@@ -1445,7 +1445,14 @@ header { height: 48px; }
     var cutReady = poster.on && poster.canvas && cut && cut.src === state.main, t = Object.assign({}, texts[id]);
     var rk = RICH_KEYS[id] || [];
     Object.keys(t).forEach(function (k) { if (typeof t[k] === "string" && rk.indexOf(k) < 0) t[k] = plain(t[k]); });
-    if (KEEP[id]) KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
+    var exl = [];
+    if (KEEP[id]) KEEP[id].forEach(function (k) {
+      if (t[k]) return;
+      var ex = EXAMPLES[id] && EXAMPLES[id][k];
+      if (ex && showEx()) { t[k] = rk.indexOf(k) < 0 ? plain(ex) : ex; exl.push({ key: k, text: plain(ex) }); }
+      else t[k] = placeholder(k);
+    });
+    if (id === state.cur) curEx = exl;
     var shapeReady = shaped.canvas && shaped.src === state.main;
     return { orig: state.main, shp: shapeReady ? shaped.canvas : null, pbase: shapeReady ? shaped.canvas : state.main, person: (profCut && profCut.canvas && (profCut.src === (shapeReady ? shaped.canvas : state.main) || profCut.orig === state.main)) ? profCut : null, main: cutReady ? poster.canvas : (shapeReady ? shaped.canvas : state.main), sub: state.sub, t: t, o: opts, a: animSec };
   }
@@ -1483,6 +1490,7 @@ header { height: 48px; }
     return (k && m[k]) || null;
   }
   function strokeHook(txt, x, y) {
+    if (matchEx(txt)) { this.save(); this.globalAlpha *= 0.42; origStrokeText.apply(this, arguments); this.restore(); return; }
     var col = colorFor(txt);
     if (col) {
       var c = this, size = parseFloat((c.font.match(/(\d+(?:\.\d+)?)px/) || [0, 30])[1]);
@@ -1495,26 +1503,22 @@ header { height: 48px; }
   }
   /* an empty field shows its example text faintly on the preview (never in saved pictures or recordings), and a tap on it opens the editor */
   function showEx() { return !noEx && animSec === undefined && !(typeof cam !== "undefined" && cam && cam.rec); }
-  function drawExample(c, s, x, y) {
-    var m = s.match(/^　　　(​+)/), pk = m && FIELD_KEYS[m[1].length - 1], ex = pk && EXAMPLES[state.cur] && EXAMPLES[state.cur][pk];
-    ex = ex ? plain(ex).split("\n").filter(function (l) { return l; }) : [];
-    if (!ex.length) return false;
-    var size = parseFloat((c.font.match(/(\d+(?:\.\d+)?)px/) || [0, 30])[1]), pf = c.font, wmax = 0, i;
-    ex.forEach(function (l) { wmax = Math.max(wmax, c.measureText(l).width); });
-    var lim = cv.width * 0.8;
-    if (wmax > lim) { c.font = pf.replace(/(\d+(?:\.\d+)?)px/, (size * lim / wmax).toFixed(1) + "px"); size = size * lim / wmax; }
-    c.save(); c.globalAlpha *= 0.4;
-    ex.forEach(function (l, j) {
-      recordText.rec.call(c, l, x, y + j * size * 1.15);
-      regions[regions.length - 1].text = s;
-      origFillText.call(c, l, x, y + j * size * 1.15);
-    });
-    c.restore(); c.font = pf;
-    return true;
+  function matchEx(s) {
+    var i, e;
+    if (!curEx.length || !showEx()) return null;
+    s = String(s);
+    if (!s.trim()) return null;
+    for (i = 0; i < curEx.length; i++) { e = curEx[i]; if (e.text === s || (s.length >= 2 && e.text.indexOf(s) >= 0)) return e; }
+    return null;
   }
   function recordText(txt, x, y) {
-    var col = null;
-    if (showEx() && /^　　　​+$/.test(String(txt)) && drawExample(this, String(txt), x, y)) return;
+    var col = null, ex = matchEx(txt);
+    if (ex) {
+      var c0 = this;
+      recordText.rec.call(c0, txt, x, y); regions[regions.length - 1].fk = ex.key;
+      c0.save(); c0.globalAlpha *= 0.42; origFillText.apply(c0, arguments); c0.restore();
+      return;
+    }
     try { col = colorFor(txt); } catch (e) {}
     if (col) {
       var pf = this.fillStyle; this.fillStyle = col;
@@ -1835,7 +1839,7 @@ header { height: 48px; }
   function keyForText(s) { return candKeys(s)[0] || null; }
   /* several lines of one field are drawn one after another: when a line fits more than one field, follow its neighbours */
   function resolveRegionKeys() {
-    regions.forEach(function (r) { r.cands = candKeys(r.text); r.key = r.cands.length === 1 ? r.cands[0] : null; });
+    regions.forEach(function (r) { r.cands = r.fk ? [r.fk] : candKeys(r.text); r.key = r.cands.length === 1 ? r.cands[0] : null; });
     regions.forEach(function (r, i) {
       if (r.key || !r.cands.length) return;
       for (var d = 1; d <= 3 && !r.key; d++) {
