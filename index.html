@@ -238,6 +238,10 @@ canvas#cv { border-radius: 12px; }
 .sh-badge { display: none !important; }
 
 .savebtn { white-space: nowrap; flex: none; }
+.busy-badge { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.72); color: #fff; border-radius: 999px; padding: 8px 16px; font-size: 0.85rem; font-weight: 700; white-space: nowrap; pointer-events: none; }
+.busy-badge[hidden] { display: none; }
+.busy-badge i { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: bspin .8s linear infinite; }
+@keyframes bspin { to { transform: rotate(360deg); } }
 /* phone sizing: keep the preview big while a panel is open */
 header h1 { white-space: nowrap; font-size: 1rem; }
 header { height: 48px; }
@@ -281,6 +285,7 @@ header { height: 48px; }
   <div class="shot">
     <canvas id="cv" width="1080" height="1440" role="img" aria-label="選んだ枠を重ねた写真のプレビュー"></canvas>
     <button type="button" class="sh-badge" id="shBadge" hidden>顔を加工中（タップで解除）</button>
+    <div class="busy-badge" id="busyBadge" hidden><i></i>背景を切り抜き中…</div>
     <div class="hint" id="hint" hidden>小さい写真をタップで入れ替え</div>
   </div>
   <div id="msg" role="status"></div>
@@ -2517,15 +2522,15 @@ header { height: 48px; }
     var base = profileBase();
     if (profCut && profCut.src === base) return;
     if (shaped.on && !(shaped.canvas && shaped.src === state.main) && !shaped.failed) return;
-    profBusy = true;
+    profBusy = true; $("busyBadge").hidden = false;
     var pre = alphaCut(base);
     (pre ? Promise.resolve(pre) : segmentPerson(base)).then(function (sm) {
       var w = sm.width, h = sm.height, d = sm.getContext("2d").getImageData(0, 0, w, h).data, x0 = w, y0 = h, x1 = 0, y1 = 0, x, y;
       for (y = 0; y < h; y += 2) for (x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] > 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       var ok = x1 > x0 && y1 > y0;
       profCut = { src: base, orig: state.main, canvas: ok ? sm : null, box: ok ? { x: Math.max(0, x0 - 4), y: Math.max(0, y0 - 4), w: Math.min(w, x1 - x0 + 8), h: Math.min(h, y1 - y0 + 8) } : null };
-      profBusy = false; redraw();
-    }).catch(function () { profCut = { src: base, orig: state.main, canvas: null, box: null }; profBusy = false; redraw(); });
+      profBusy = false; $("busyBadge").hidden = true; redraw();
+    }).catch(function () { profCut = { src: base, orig: state.main, canvas: null, box: null }; profBusy = false; $("busyBadge").hidden = true; redraw(); });
   }
   function buildPoster() {
     if (!cut) return;
