@@ -1072,7 +1072,7 @@ header { height: 48px; }
           while (b < l.length && l[b].col === col) run += l[b++].ch;
           c.lineWidth = Math.round(fs2 * (col ? 0.2 : 0.16)); c.strokeStyle = "#000"; c.strokeText(run, x, y);
           if (col) { c.lineWidth = Math.round(fs2 * 0.1); c.strokeStyle = "#fff"; c.strokeText(run, x, y); }
-          c.fillStyle = col === "#1747c8" ? "#58a0ff" : (col || "#fff"); c.fillText(run, x, y);
+          c.fillStyle = col === "#e0141e" ? "#ff3b3b" : col === "#1747c8" ? "#58a0ff" : (col || "#fff"); c.fillText(run, x, y);
           x += c.measureText(run).width; a = b;
         }
       });
@@ -1527,7 +1527,7 @@ header { height: 48px; }
   var texts = {
     news: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
-    street: { time: "16:20", tag: "速報", headline: "SNSで話題\n可愛すぎる女の子", sub: "全国から称賛の声", place: "街頭インタビュー", tag2: "え、私ですか？\n⟦青:ほんとですか？⟧ありがとうございます" },
+    street: { time: "16:20", tag: "速報", headline: "SNSで話題\n可愛すぎる女の子", sub: "全国から称賛の声", place: "街頭インタビュー", tag2: "え、私ですか？\n⟦赤:ほんとですか？⟧ありがとうございます" },
     clip: { headline: "話題の⟦赤:あの人⟧\nカメラに向かって“ウインク”", sub: "newsクリップ", place: "東京・原宿", when: "午前9時半過ぎ", tag2: "速報", name: "山田 花子", tag: "SNSで話題の人気者\nカメラの前でおちゃめな一面" },
     intv: { name: "山田 太郎", tag: "1日30分睡眠のショートスリーパー", headline: "1日30分! 超ショートスリーパー生活の実態" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
