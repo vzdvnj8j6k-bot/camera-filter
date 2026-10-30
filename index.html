@@ -242,6 +242,10 @@ canvas#cv { border-radius: 12px; }
 .busy-badge[hidden] { display: none; }
 .busy-badge i { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: bspin .8s linear infinite; }
 @keyframes bspin { to { transform: rotate(360deg); } }
+.modesw { display: flex; justify-content: center; gap: 4px; margin: 6px auto 0; }
+.modesw button { background: none; border: 0; color: #9a9aa0; font-family: var(--font-body); font-size: 0.82rem; font-weight: 700; padding: 3px 14px; border-radius: 999px; }
+.modesw button.on { color: #ffd000; background: rgba(255,255,255,.12); }
+.shutterbtn.photo i { background: #fff; }
 /* phone sizing: keep the preview big while a panel is open */
 header h1 { white-space: nowrap; font-size: 1rem; }
 header { height: 48px; }
@@ -440,6 +444,7 @@ header { height: 48px; }
 
       </div>
     </div>
+    <div class="modesw" id="modeSw" role="tablist"><button type="button" data-m="photo">写真</button><button type="button" data-m="video" class="on">動画</button></div>
     <div class="shutterrow">
       <button class="pick" type="button" id="dropMain" aria-label="写真を選ぶ">
         <span class="thumb" id="thumbMain"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg></span>
@@ -3081,7 +3086,21 @@ header { height: 48px; }
 
   $("saveTop").onclick = function () { $("save").onclick(); };
   /* shutter: one tap starts the camera and recording together; a second tap stops and saves */
+  var shotMode = "video";
+  Array.prototype.forEach.call(document.querySelectorAll("#modeSw button"), function (b) {
+    b.onclick = function () {
+      if (cam.rec) return;
+      shotMode = b.getAttribute("data-m");
+      Array.prototype.forEach.call(document.querySelectorAll("#modeSw button"), function (x) { x.classList.toggle("on", x === b); });
+      $("shutterBtn").classList.toggle("photo", shotMode === "photo");
+      $("shutterBtn").setAttribute("aria-label", shotMode === "photo" ? "写真を撮る" : "録画");
+    };
+  });
   $("shutterBtn").onclick = async function () {
+    if (shotMode === "photo") {
+      if (!cam.stream) { await $("camStart").onclick(); if (!cam.stream) return; await new Promise(function (r) { setTimeout(r, 900); }); }
+      $("save").onclick(); return;
+    }
     if (cam.rec) { $("camRec").onclick(); return; }
     if (!cam.stream) { await $("camStart").onclick(); if (!cam.stream) return; }
     $("camRec").onclick();
