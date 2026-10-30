@@ -369,6 +369,7 @@ header { height: 48px; }
       <p class="small" style="margin-top: 8px">※ Effect House の文字は撮影中に書き換えられません。文字を変えたいときは、このアプリで文字を直して、PNGを作り直してください。</p>
     </details>
     <label class="check"><input type="checkbox" id="tv-on" checked>テレビ画面風の質感（ざらつき・ぼかし）</label>
+    <label class="check"><input type="checkbox" id="car-on" checked>車の中から撮った風（ニュースクリップ枠・座席と窓の枠）</label>
     <div class="seg" style="grid-template-columns: 1fr 1fr">
       <button type="button" id="animPrev">動きをプレビュー</button>
       <button type="button" id="animRec">動画で保存</button>
@@ -1082,12 +1083,36 @@ header { height: 48px; }
 
   /* News-clip layout (landscape): white headline box with an orange outline at the top right, a "news clip" tab under it,
      a location/time label at the top left, and a tag + big name + two caption bars at the bottom left. */
+
+  /* the view from inside a car: tinted window glass, dark seat/headrest on one side, a pillar, and the door sill at the bottom */
+  function carInterior(c, w, h) {
+    c.save();
+    c.fillStyle = "rgba(14,24,44,.20)"; c.fillRect(0, 0, w, h);
+    var gl = c.createLinearGradient(0, 0, w, h * 0.7); gl.addColorStop(0, "rgba(255,255,255,.12)"); gl.addColorStop(0.35, "rgba(255,255,255,0)"); gl.addColorStop(1, "rgba(255,255,255,.05)");
+    c.fillStyle = gl; c.fillRect(0, 0, w, h);
+    /* headrest + seat back (left) */
+    var sg = c.createLinearGradient(0, 0, 330, 0); sg.addColorStop(0, "#05070b"); sg.addColorStop(1, "#171b23");
+    c.fillStyle = sg; c.beginPath(); c.moveTo(0, 215); c.lineTo(150, 215); c.quadraticCurveTo(300, 225, 318, 330); c.lineTo(330, h); c.lineTo(0, h); c.closePath(); c.fill();
+    c.strokeStyle = "rgba(255,255,255,.10)"; c.lineWidth = 3; c.beginPath(); c.moveTo(150, 217); c.quadraticCurveTo(300, 227, 316, 332); c.stroke();
+    /* window pillar (right) */
+    var pg = c.createLinearGradient(w - 120, 0, w, 0); pg.addColorStop(0, "#1b1f27"); pg.addColorStop(1, "#05070b");
+    c.fillStyle = pg; c.beginPath(); c.moveTo(w, 0); c.lineTo(w - 70, 0); c.lineTo(w - 118, h); c.lineTo(w, h); c.closePath(); c.fill();
+    /* door sill / glass edge (bottom) */
+    var dg = c.createLinearGradient(0, h - 110, 0, h); dg.addColorStop(0, "#d9dde3"); dg.addColorStop(0.55, "#9aa0a8"); dg.addColorStop(1, "#3a3e45");
+    c.fillStyle = dg; c.beginPath(); c.moveTo(0, h - 36); c.quadraticCurveTo(w * 0.45, h - 112, w, h - 70); c.lineTo(w, h); c.lineTo(0, h); c.closePath(); c.fill();
+    c.strokeStyle = "rgba(255,255,255,.55)"; c.lineWidth = 3; c.beginPath(); c.moveTo(0, h - 36); c.quadraticCurveTo(w * 0.45, h - 112, w, h - 70); c.stroke();
+    /* edge darkening */
+    var vg = c.createRadialGradient(w / 2, h / 2, h * 0.5, w / 2, h / 2, h * 1.05); vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(0,0,0,.38)");
+    c.fillStyle = vg; c.fillRect(0, 0, w, h);
+    c.restore();
+  }
   F.clip = { name: "ニュースクリップ(横長)", size: [1280, 720], fields: { headline: "右上の見出し(改行で2行・色付け可)", sub: "見出しの下のタブ", place: "左上の場所", when: "左上の時刻", tag2: "名前の上の小さなラベル", name: "大きな名前", tag: "下の字幕(改行で2行)" } };
   F.clip.draw = function (c, S) {
     var w = 1280, h = 720, t = S.t, ORANGE = "#f5a21a", i;
     c.filter = "contrast(1.04) saturate(1.05)"; cover(c, S.main, 0, 0, w, h); c.filter = "none";
     var bg = c.createLinearGradient(0, 380, 0, h); bg.addColorStop(0, "rgba(0,0,0,0)"); bg.addColorStop(1, "rgba(0,0,0,.45)");
     c.fillStyle = bg; c.fillRect(0, 380, w, h - 380);
+    if (carOn && !S.noPhoto) carInterior(c, w, h);
     c.textBaseline = "middle"; c.textAlign = "left";
 
     // headline box (top right)
@@ -1518,6 +1543,7 @@ header { height: 48px; }
     cctv: { name: "TOKYO ST.", time: nowTime },
     dual: { time: nowTime, name: "東京" }
   };
+  var carOn = true; try { carOn = localStorage.getItem("dualshot.car") !== "0"; } catch (e) {}
   var opts = { led: "full", dual: { pos: "tl", size: 34, border: 8, radius: 28, late: false, flat: true }, scrollOn: false };
   var state = { cur: "news", main: sample("main"), sub: sample("sub") };
 
@@ -2184,6 +2210,8 @@ header { height: 48px; }
     animRAF = requestAnimationFrame(step);
   }
   $("tv-on").addEventListener("change", function (e) { tvfx.on = e.target.checked; redraw(); });
+  $("car-on").checked = carOn;
+  $("car-on").addEventListener("change", function (e) { carOn = e.target.checked; try { localStorage.setItem("dualshot.car", carOn ? "1" : "0"); } catch (x) {} redraw(); });
 
   /* free voice: the browser's built-in speech synthesis (not captured in the recorded file) */
   var synth = window.speechSynthesis, speakTimer = null;
