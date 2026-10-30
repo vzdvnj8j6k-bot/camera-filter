@@ -881,6 +881,76 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
   };
 
+  /* Vertical (9:16) street-interview telop for TikTok: red clock, red badge + navy headline banner, boxed vertical label, big outlined subtitle.
+     Kept inside TikTok's safe zone: clear of the top bar, the right-hand buttons and the caption area. */
+  F.street = { name: "街頭インタビュー(縦・TikTok)", size: [1080, 1920], fields: { time: "左上の時刻", tag: "赤い丸の文字", headline: "紺の帯の見出し(改行で2行)", sub: "帯の下の小さい文字", place: "縦書きの囲み", tag2: "字幕(色は文字を選んで)" } };
+  F.street.draw = function (c, S) {
+    var t = S.t, w = 1080, h = 1920, k = animSec === undefined ? 1 : ease(animSec / 0.6), dx = (1 - k) * -520, i;
+    c.filter = "contrast(1.04) saturate(1.06)"; cover(c, S.main, 0, 0, w, h); c.filter = "none";
+    var sg = c.createLinearGradient(0, 1050, 0, 1500); sg.addColorStop(0, "rgba(0,0,0,0)"); sg.addColorStop(1, "rgba(0,0,0,.28)");
+    c.fillStyle = sg; c.fillRect(0, 1050, w, 450);
+    c.textBaseline = "middle"; c.textAlign = "center";
+
+    // clock (top left)
+    c.save(); c.translate(dx, 0);
+    var cg = c.createLinearGradient(0, 190, 0, 292); cg.addColorStop(0, "#f0242e"); cg.addColorStop(1, "#b80f18");
+    rr(c, 36, 190, 206, 102, 16); c.fillStyle = cg; c.fill(); c.lineWidth = 4; c.strokeStyle = "#fff"; c.stroke();
+    if (t.time) { c.fillStyle = "#fff"; fit(c, t.time, "900", SANS, 76, 150, 34); fat(c, t.time, 126, 244); }
+    c.restore();
+
+    // headline banner (right of the clock) with a red badge overlapping its left end
+    c.save(); c.translate(-dx * 0 + (1 - k) * 700, 0);
+    var bg = c.createLinearGradient(0, 190, 0, 292); bg.addColorStop(0, "#1a3272"); bg.addColorStop(1, "#0a1636");
+    rr(c, 330, 190, 700, 102, 10); c.fillStyle = bg; c.fill(); c.lineWidth = 3; c.strokeStyle = "#fff"; c.stroke();
+    var hl = richLines(t.headline).slice(0, 2);
+    c.textAlign = "left"; c.fillStyle = "#fff";
+    var hs = hl.length > 1 ? 44 : 54, hfs = hs;
+    hl.forEach(function (l) { hfs = Math.min(hfs, fit(c, charsText(l), "900", SANS, hs, 580, 24)); });
+    c.font = "900 " + hfs + "px " + SANS;
+    hl.forEach(function (l, n) { drawRich(c, l, 410, 241 + (n - (hl.length - 1) / 2) * (hfs + 6), "#fff", true); });
+    if (t.sub) {
+      rr(c, 560, 292, 470, 52, 6); c.fillStyle = "rgba(255,255,255,.96)"; c.fill();
+      c.fillStyle = "#1a2a55"; c.textAlign = "right"; fit(c, t.sub, "900", SANS, 32, 440, 18); fat(c, t.sub, 1012, 319);
+    }
+    c.restore();
+    c.save(); c.translate(dx * 0.6, 0);
+    var rg = c.createRadialGradient(290, 232, 6, 296, 241, 70); rg.addColorStop(0, "#ff4650"); rg.addColorStop(1, "#c3101a");
+    c.beginPath(); c.arc(296, 241, 70, 0, Math.PI * 2); c.fillStyle = rg; c.fill(); c.lineWidth = 5; c.strokeStyle = "#fff"; c.stroke();
+    if (t.tag) { c.textAlign = "center"; c.fillStyle = "#fff"; fit(c, t.tag, "900", SANS, 50, 112, 22); fat(c, t.tag, 296, 243); }
+    c.restore();
+
+    // vertical label (right, left of TikTok's button column)
+    if (t.place) {
+      var chars = Array.from(t.place.replace(/[ー－―]/g, "｜").replace(/\n/g, "")).slice(0, 14), step = 54, bh = chars.length * step + 44;
+      c.save(); c.translate((1 - k) * 400, 0);
+      c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 14; c.shadowOffsetY = 4;
+      rr(c, 800, 400, 90, bh, 8); c.fillStyle = "rgba(255,255,255,.97)"; c.fill(); c.shadowColor = "transparent";
+      c.textAlign = "center"; c.fillStyle = "#1a2a55";
+      chars.forEach(function (ch, n) { c.font = "900 46px " + SANS; fat(c, ch, 845, 400 + 22 + step / 2 + n * step); });
+      c.restore();
+    }
+
+    // subtitle: white text with a dark outline; coloured spans get a white outline
+    var sl = richLines(t.tag2).slice(0, 3);
+    if (sl.length && sl.some(function (l) { return l.length; })) {
+      c.save(); c.globalAlpha = animSec === undefined ? 1 : ease((animSec - 0.3) / 0.5);
+      var ss = 78, fs2 = ss; sl.forEach(function (l) { fs2 = Math.min(fs2, fit(c, charsText(l), "900", SANS, ss, 840, 34)); });
+      c.font = "900 " + fs2 + "px " + SANS; c.textAlign = "left"; c.lineJoin = "round";
+      var lead = Math.round(fs2 * 1.28), y0 = 1330 - ((sl.length - 1) * lead) / 2;
+      sl.forEach(function (l, n) {
+        var x = 60, y = y0 + n * lead, a = 0, b, run, col;
+        while (a < l.length) {
+          col = l[a].col; b = a; run = "";
+          while (b < l.length && l[b].col === col) run += l[b++].ch;
+          c.lineWidth = Math.round(fs2 * 0.2); c.strokeStyle = col ? "#fff" : "#10204a"; c.strokeText(run, x, y);
+          c.fillStyle = col || "#fff"; c.fillText(run, x, y);
+          x += c.measureText(run).width; a = b;
+        }
+      });
+      c.restore();
+    }
+  };
+
   function poly(c, pts) {
     c.beginPath(); c.moveTo(pts[0][0], pts[0][1]);
     for (var i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]);
@@ -1226,13 +1296,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   };
 
 
-  var ORDER = ["news", "newsw", "newsr", "intv", "newst", "newsd", "paper", "cctv", "clinic", "profile", "sleeper", "dual"];
+  var ORDER = ["news", "newsw", "newsr", "intv", "street", "newst", "newsd", "paper", "cctv", "clinic", "profile", "sleeper", "dual"];
   var FIELD_KEYS = ["name", "tag", "headline", "sub", "place", "when", "tag2", "ticker", "time", "suf", "scroll", "red", "blue", "time2", "suf2"];
 
   /* ---------- state ---------- */
   var texts = {
     news: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
+    street: { time: "5:27", tag: "続出", headline: "真夏日が続出\n今年一番の暑さに", sub: "あすも厳しい暑さ", place: "街で聞いた人", tag2: "かき氷を食べたら\n⟦青:涼しくなる⟧かなと思って" },
     intv: { name: "山田 太郎", tag: "1日30分睡眠のショートスリーパー\n短眠メソッドを提供する「サンプル」代表", headline: "1日30分! 超ショートスリーパー生活の実態" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
@@ -1255,13 +1326,14 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     news: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     intv: ["name", "tag", "headline"],
+    street: ["time", "tag", "headline", "sub", "place", "tag2"],
     newsr: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newst: ["name", "tag", "place", "time", "headline"],
     newsd: ["tag", "headline", "time", "time2"],
     clinic: ["headline", "place", "tag2", "when"],
     profile: ["name", "tag", "headline"]
   };
-  var RICH_KEYS = { news: ["headline"], newsw: ["headline"], newst: ["headline", "tag", "place", "red", "blue"] };
+  var RICH_KEYS = { street: ["headline", "tag2"], news: ["headline"], newsw: ["headline"], newst: ["headline", "tag", "place", "red", "blue"] };
   function placeholder(k) { return "　　　" + new Array(FIELD_KEYS.indexOf(k) + 2).join("​"); }
   function S(id) {
     var cutReady = poster.on && poster.canvas && cut && cut.src === state.main, t = Object.assign({}, texts[id]);
@@ -1273,7 +1345,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   }
 
   /* TV look + animation */
-  var animSec, creditText = "", tvfx = { on: true }, TV_FRAMES = ["news", "newsw", "newsr", "intv", "newst", "newsd"];
+  var animSec, creditText = "", tvfx = { on: true }, TV_FRAMES = ["news", "newsw", "newsr", "intv", "street", "newst", "newsd"];
   function ease(x) { x = Math.max(0, Math.min(1, x)); return 1 - Math.pow(1 - x, 3); }
   function isTVFrame(id) { return TV_FRAMES.indexOf(id) >= 0; }
   var tvBuf = document.createElement("canvas"), tvBufCtx = tvBuf.getContext("2d"), noisePat = null;
@@ -1782,7 +1854,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }
     editor.querySelector(".ep-label").textContent = "編集中：" + label;
     var inp = editor.querySelector(".ep-input");
-    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw" || state.cur === "clinic" || state.cur === "sleeper") && k === "headline" || state.cur === "intv" && k === "tag";
+    var multi = (state.cur === "newst" || state.cur === "news" || state.cur === "newsw" || state.cur === "clinic" || state.cur === "sleeper") && k === "headline" || state.cur === "intv" && k === "tag" || state.cur === "street" && (k === "headline" || k === "tag2");
     if (rich) {
       /* WYSIWYG: a contenteditable box where coloured text is shown in its colour (the ⟦色:…⟧ markup stays hidden) */
       var ce = document.createElement("div");
