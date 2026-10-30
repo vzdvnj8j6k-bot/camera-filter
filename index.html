@@ -972,7 +972,7 @@ header { height: 48px; }
     c.fillStyle = "#c9ccd2"; c.fillRect(0, 630, w, 2);
     c.textAlign = "left"; c.textBaseline = "middle"; c.fillStyle = "#111";
     var nw = 0;
-    if (t.name) { fit(c, t.name, "700", SANS, 58, 380, 26); nw = c.measureText(t.name).width; c.lineJoin = "round"; c.lineWidth = 2.6; c.strokeStyle = "#111"; c.strokeText(t.name, 48, 596); c.fillText(t.name, 48, 596); }
+    if (t.name) { fit(c, t.name, "700", SANS, 58, 380, 26); nw = c.measureText(t.name).width; c.lineJoin = "round"; c.lineWidth = 1.2; c.strokeStyle = "#111"; c.strokeText(t.name, 48, 596); c.fillText(t.name, 48, 596); }
     var cx = 48 + nw + 26;
     c.fillStyle = "#b5b9c1"; c.fillRect(cx, 570, 3, 48);
     cx += 22;
@@ -1024,16 +1024,16 @@ header { height: 48px; }
     var hs = hl.length > 1 ? 46 : 62, hfs = hs;
     hl.forEach(function (l) { hfs = Math.min(hfs, fit(c, charsText(l), "700", SANS, hs, 600, 24)); });
     c.font = "700 " + hfs + "px " + SANS;
-    hl.forEach(function (l, n) { drawRich(c, l, 400, 250 + (n - (hl.length - 1) / 2) * (hfs + 14), "#fff", true); });
+    hl.forEach(function (l, n) { drawRich(c, l, 400, 250 + (n - (hl.length - 1) / 2) * (hfs + 14), "#fff", false); });
     if (t.sub) {
       rr(c, 560, 310, 470, 54, 6); c.fillStyle = "rgba(255,255,255,.96)"; c.fill();
-      c.fillStyle = "#1a2a55"; c.textAlign = "right"; fit(c, t.sub, "700", SANS, 34, 440, 18); fat(c, t.sub, 1012, 338);
+      c.fillStyle = "#1a2a55"; c.textAlign = "right"; fit(c, t.sub, "700", SANS, 34, 440, 18); c.fillText(t.sub, 1012, 338);
     }
     c.restore();
     c.save(); c.translate(dx * 0.6, 0);
     var rg = c.createRadialGradient(290, 241, 6, 296, 250, 76); rg.addColorStop(0, "#ff4650"); rg.addColorStop(1, "#c3101a");
     c.beginPath(); c.arc(296, 250, 76, 0, Math.PI * 2); c.fillStyle = rg; c.fill(); c.lineWidth = 5; c.strokeStyle = "#fff"; c.stroke();
-    if (t.tag) { c.textAlign = "center"; c.fillStyle = "#fff"; fit(c, t.tag, "700", SANS, 54, 122, 22); fat(c, t.tag, 296, 252); }
+    if (t.tag) { c.textAlign = "center"; c.fillStyle = "#fff"; fit(c, t.tag, "700", SANS, 54, 122, 22); c.fillText(t.tag, 296, 252); }
     c.restore();
 
     // vertical label (right, left of TikTok's button column)
@@ -1043,7 +1043,7 @@ header { height: 48px; }
       c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 14; c.shadowOffsetY = 4;
       rr(c, 800, 400, 90, bh, 8); c.fillStyle = "rgba(255,255,255,.97)"; c.fill(); c.shadowColor = "transparent";
       c.textAlign = "center"; c.fillStyle = "#1a2a55";
-      chars.forEach(function (ch, n) { c.font = "700 46px " + SANS; fat(c, ch, 845, 400 + 22 + step / 2 + n * step); });
+      chars.forEach(function (ch, n) { c.font = "700 46px " + SANS; c.fillText(ch, 845, 400 + 22 + step / 2 + n * step); });
       c.restore();
     }
 
