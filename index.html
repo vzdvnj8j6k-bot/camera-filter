@@ -260,7 +260,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   </div>
 
   <div class="sheet" id="tvSheet" data-tab="video" hidden>
-    <p class="small"><b>カメラで撮影（縦動画）</b><br>カメラの映像にこの枠を重ねて、そのまま録画できます。録画した動画は、TikTokなどにアップロードできます。</p>
+    <p class="small"><b>カメラで撮影（縦動画）</b><br>外カメラの映像にこの枠を重ねて、そのまま録画できます（外カメラがない端末では、インカメラを使います）。録画した動画は、TikTokなどにアップロードできます。</p>
     <div class="seg" style="grid-template-columns: 1fr 1fr">
       <button type="button" id="camStart">カメラを起動</button>
       <button type="button" id="camRec" disabled>録画開始</button>
@@ -2224,13 +2224,13 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     playAnim(dur, function () { setTimeout(function () { rec.stop(); }, 150); });
   };
   /* live camera: the selfie camera is drawn into a canvas that stands in for the photo, so every frame works on live video; record the finished canvas */
-  var cam = { stream: null, video: null, cv: null, raf: null, rec: null, t0: 0, savedMain: null, savedContain: true };
+  var cam = { mirror: false, stream: null, video: null, cv: null, raf: null, rec: null, t0: 0, savedMain: null, savedContain: true };
   function camLoop() {
     var sz = F[state.cur].size || [W, H], v = cam.video;
     if (cam.cv.width !== sz[0] || cam.cv.height !== sz[1]) { cam.cv.width = sz[0]; cam.cv.height = sz[1]; }
     if (v.videoWidth) {
       var c = cam.cv.getContext("2d"), k = Math.max(sz[0] / v.videoWidth, sz[1] / v.videoHeight), dw = v.videoWidth * k, dh = v.videoHeight * k;
-      c.save(); c.translate(sz[0], 0); c.scale(-1, 1); c.drawImage(v, (sz[0] - dw) / 2, (sz[1] - dh) / 2, dw, dh); c.restore();
+      c.save(); if (cam.mirror) { c.translate(sz[0], 0); c.scale(-1, 1); } c.drawImage(v, (sz[0] - dw) / 2, (sz[1] - dh) / 2, dw, dh); c.restore();
     }
     state.main = cam.cv; view.contain = false;
     if (cam.rec) { var e = (performance.now() - cam.t0) / 1000; animSec = e < 1.4 ? e : undefined; } else animSec = undefined;
@@ -2250,9 +2250,10 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     if (cam.stream) { camStop(); return; }
     if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { $("msg").textContent = "この画面ではカメラを使えません。公開ページを、ブラウザで直接開いてください。"; return; }
     try {
-      try { cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: true }); }
-      catch (e0) { cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }); }
+      try { cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: true }); }
+      catch (e0) { cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } }); }
     } catch (e) { $("msg").textContent = "カメラを使えませんでした。ブラウザのカメラの許可を確認してください。"; return; }
+    var fm = (cam.stream.getVideoTracks()[0].getSettings() || {}).facingMode; cam.mirror = fm !== "environment";
     cam.video = cam.video || document.createElement("video"); cam.video.playsInline = true; cam.video.muted = true; cam.video.srcObject = cam.stream;
     await cam.video.play().catch(function () {});
     cam.cv = cam.cv || document.createElement("canvas");
