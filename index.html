@@ -356,6 +356,17 @@ header { height: 48px; }
     </div>
     </div>
     <button type="button" id="ovPng" class="seg-btn">枠だけを透明PNGで保存（TikTok Effect House用）</button>
+    <details class="small" id="ehGuide"><summary><b>TikTokのフィルターにする手順（Effect House）</b></summary>
+      <ol style="margin: 8px 0 0 18px; padding: 0; line-height: 1.7">
+        <li>上で枠（街頭インタビューなど）を選び、文字を決めてから「透明PNGで保存」を押す。</li>
+        <li>パソコンに TikTok公式の無料ツール「Effect House」を入れる（effecthouse.tiktok.com）。</li>
+        <li>Effect House で新規プロジェクトを作り、保存したPNGを取り込む。</li>
+        <li>Hierarchy で「＋」→ Screen Image（画面いっぱいの画像）を追加し、テクスチャにそのPNGを指定。画面サイズいっぱいに引き伸ばす。</li>
+        <li>カメラ映像はそのまま背景に出るので、枠はその上に重ねるだけで完成。</li>
+        <li>スマホの TikTok で QRコードを読んで試し、問題なければ Publish（審査に出す）。審査に通るとカメラの「エフェクト」一覧に出る。</li>
+      </ol>
+      <p class="small" style="margin-top: 8px">※ Effect House の文字は撮影中に書き換えられません。文字を変えたいときは、このアプリで文字を直して、PNGを作り直してください。</p>
+    </details>
     <label class="check"><input type="checkbox" id="tv-on" checked>テレビ画面風の質感（ざらつき・ぼかし）</label>
     <div class="seg" style="grid-template-columns: 1fr 1fr">
       <button type="button" id="animPrev">動きをプレビュー</button>
@@ -2425,7 +2436,7 @@ header { height: 48px; }
   /* the frame's graphics alone on a transparent background, for use as an overlay (e.g. in TikTok Effect House) */
   $("ovPng").onclick = function () {
     var id = state.cur, sz = F[id].size || [W, H], o = document.createElement("canvas"); o.width = sz[0]; o.height = sz[1];
-    var so = S(id); so.noPhoto = true;
+    noEx = true; var so = S(id); noEx = false; so.noPhoto = true;
     var keepAnim = animSec; animSec = undefined;
     try { F[id].draw(o.getContext("2d"), so); } finally { animSec = keepAnim; }
     o.toBlob(function (b) {
