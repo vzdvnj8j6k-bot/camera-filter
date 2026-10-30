@@ -260,6 +260,12 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   </div>
 
   <div class="sheet" id="tvSheet" data-tab="video" hidden>
+    <p class="small"><b>カメラで撮影（縦動画）</b><br>カメラの映像にこの枠を重ねて、そのまま録画できます。録画した動画は、TikTokなどにアップロードできます。</p>
+    <div class="seg" style="grid-template-columns: 1fr 1fr">
+      <button type="button" id="camStart">カメラを起動</button>
+      <button type="button" id="camRec" disabled>録画開始</button>
+    </div>
+    <button type="button" id="ovPng" class="seg-btn">枠だけを透明PNGで保存（TikTok Effect House用）</button>
     <label class="check"><input type="checkbox" id="tv-on" checked>テレビ画面風の質感（ざらつき・ぼかし）</label>
     <div class="seg" style="grid-template-columns: 1fr 1fr">
       <button type="button" id="animPrev">動きをプレビュー</button>
@@ -886,9 +892,11 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   F.street = { name: "街頭インタビュー(縦・TikTok)", size: [1080, 1920], fields: { time: "左上の時刻", tag: "赤い丸の文字", headline: "紺の帯の見出し(改行で2行)", sub: "帯の下の小さい文字", place: "縦書きの囲み", tag2: "字幕(色は文字を選んで)" } };
   F.street.draw = function (c, S) {
     var t = S.t, w = 1080, h = 1920, k = animSec === undefined ? 1 : ease(animSec / 0.6), dx = (1 - k) * -520, i;
-    c.filter = "contrast(1.04) saturate(1.06)"; cover(c, S.main, 0, 0, w, h); c.filter = "none";
-    var sg = c.createLinearGradient(0, 1050, 0, 1500); sg.addColorStop(0, "rgba(0,0,0,0)"); sg.addColorStop(1, "rgba(0,0,0,.28)");
-    c.fillStyle = sg; c.fillRect(0, 1050, w, 450);
+    if (!S.noPhoto) {
+      c.filter = "contrast(1.04) saturate(1.06)"; cover(c, S.main, 0, 0, w, h); c.filter = "none";
+      var sg = c.createLinearGradient(0, 1050, 0, 1500); sg.addColorStop(0, "rgba(0,0,0,0)"); sg.addColorStop(1, "rgba(0,0,0,.28)");
+      c.fillStyle = sg; c.fillRect(0, 1050, w, 450);
+    }
     c.textBaseline = "middle"; c.textAlign = "center";
 
     // clock (top left)
@@ -2215,6 +2223,73 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     rec.start(1000);
     playAnim(dur, function () { setTimeout(function () { rec.stop(); }, 150); });
   };
+  /* live camera: the selfie camera is drawn into a canvas that stands in for the photo, so every frame works on live video; record the finished canvas */
+  var cam = { stream: null, video: null, cv: null, raf: null, rec: null, t0: 0, savedMain: null, savedContain: true };
+  function camLoop() {
+    var sz = F[state.cur].size || [W, H], v = cam.video;
+    if (cam.cv.width !== sz[0] || cam.cv.height !== sz[1]) { cam.cv.width = sz[0]; cam.cv.height = sz[1]; }
+    if (v.videoWidth) {
+      var c = cam.cv.getContext("2d"), k = Math.max(sz[0] / v.videoWidth, sz[1] / v.videoHeight), dw = v.videoWidth * k, dh = v.videoHeight * k;
+      c.save(); c.translate(sz[0], 0); c.scale(-1, 1); c.drawImage(v, (sz[0] - dw) / 2, (sz[1] - dh) / 2, dw, dh); c.restore();
+    }
+    state.main = cam.cv; view.contain = false;
+    if (cam.rec) { var e = (performance.now() - cam.t0) / 1000; animSec = e < 1.4 ? e : undefined; } else animSec = undefined;
+    render();
+    cam.raf = requestAnimationFrame(camLoop);
+  }
+  function camStop() {
+    cancelAnimationFrame(cam.raf); cam.raf = null;
+    if (cam.rec && cam.rec.state !== "inactive") cam.rec.stop();
+    if (cam.stream) cam.stream.getTracks().forEach(function (t) { t.stop(); });
+    cam.stream = null; animSec = undefined;
+    if (cam.savedMain) { state.main = cam.savedMain; view.contain = cam.savedContain; cam.savedMain = null; }
+    $("camStart").textContent = "カメラを起動"; $("camRec").disabled = true; $("camRec").textContent = "録画開始";
+    redraw();
+  }
+  $("camStart").onclick = async function () {
+    if (cam.stream) { camStop(); return; }
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { $("msg").textContent = "この画面ではカメラを使えません。公開ページを、ブラウザで直接開いてください。"; return; }
+    try {
+      try { cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1080 }, height: { ideal: 1920 } }, audio: true }); }
+      catch (e0) { cam.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }); }
+    } catch (e) { $("msg").textContent = "カメラを使えませんでした。ブラウザのカメラの許可を確認してください。"; return; }
+    cam.video = cam.video || document.createElement("video"); cam.video.playsInline = true; cam.video.muted = true; cam.video.srcObject = cam.stream;
+    await cam.video.play().catch(function () {});
+    cam.cv = cam.cv || document.createElement("canvas");
+    cam.savedMain = state.main; cam.savedContain = view.contain;
+    $("camStart").textContent = "カメラを止める"; $("camRec").disabled = false;
+    $("msg").textContent = "カメラを起動しました。「録画開始」で撮影できます。";
+    camLoop();
+  };
+  $("camRec").onclick = function () {
+    if (!cam.stream) return;
+    if (cam.rec) { cam.rec.stop(); return; }
+    if (!(cv.captureStream && window.MediaRecorder)) { $("msg").textContent = "この端末のブラウザは動画の録画に対応していません。"; return; }
+    var types = ["video/mp4;codecs=avc1", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"], mime = "";
+    types.some(function (m) { if (MediaRecorder.isTypeSupported(m)) { mime = m; return true; } return false; });
+    var out = cv.captureStream(30);
+    cam.stream.getAudioTracks().forEach(function (t) { out.addTrack(t); });
+    var chunks = [], r;
+    try { r = new MediaRecorder(out, mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : {}); }
+    catch (e) { $("msg").textContent = "録画を開始できませんでした。"; return; }
+    cam.rec = r; cam.t0 = performance.now();
+    r.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+    r.onstop = function () { cam.rec = null; $("camRec").textContent = "録画開始"; finishVideo(new Blob(chunks, { type: r.mimeType || mime || "video/webm" }), r.mimeType || mime || "video/webm", ""); };
+    r.start(1000); $("camRec").textContent = "録画を止めて保存"; $("msg").textContent = "録画中です。";
+  };
+  /* the frame's graphics alone on a transparent background, for use as an overlay (e.g. in TikTok Effect House) */
+  $("ovPng").onclick = function () {
+    var id = state.cur, sz = F[id].size || [W, H], o = document.createElement("canvas"); o.width = sz[0]; o.height = sz[1];
+    var so = S(id); so.noPhoto = true;
+    var keepAnim = animSec; animSec = undefined;
+    try { F[id].draw(o.getContext("2d"), so); } finally { animSec = keepAnim; }
+    o.toBlob(function (b) {
+      if (!b) { $("msg").textContent = "書き出せませんでした。"; return; }
+      var a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "overlay-" + id + ".png";
+      document.body.appendChild(a); a.click(); a.remove(); $("msg").textContent = "透明PNGを保存しました。";
+    }, "image/png");
+  };
+
   $("toggleFields").onclick = function () {
     var c = $("fieldsSheet").classList.toggle("collapsed");
     $("toggleFields").textContent = c ? "文字欄をすべて表示" : "文字欄を閉じる";
