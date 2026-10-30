@@ -497,6 +497,7 @@ header { height: 48px; }
   /* face-reshape filter: the warped copy of the main photo (valid while shaped.src is still the main photo) */
   var shaped = { on: false, canvas: null, src: null, vals: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0, fat: 0, body: 0, doll: 0, tired: 0, vigor: 0, smile: 0 } };
   var shapeAuto = false; /* true while the clinic frame has switched the filter on by itself */
+  var SHAPE_DEF = JSON.parse(JSON.stringify(shaped.vals));
   var SHAPE_KEYS = ["eyes", "jaw", "face", "nose", "lips", "skin", "bright", "gloss", "makeup", "fat", "body", "doll", "tired", "vigor", "smile"];
   var SHAPE_PRESETS = {
     natural: { eyes: 35, jaw: 40, face: 20, nose: 30, lips: 0, skin: 30, bright: 20, gloss: 0, makeup: 0 },
@@ -2418,7 +2419,13 @@ header { height: 48px; }
     if (cam.stream && !cam.rec) camStop();
     state.main = sample("main"); setThumb("main", ""); have.main = false;
     blobs.main = null; saveBlob("main", null);
-    cutReset(); shapeChanged();
+    cutReset(); profCut = null;
+    /* the edits that belonged to that photo go with it: face filter, its sliders and the photo position */
+    shapeAuto = false; view.fx = 0.5; view.fy = 0.4;
+    SHAPE_KEYS.forEach(function (k) { shaped.vals[k] = SHAPE_DEF[k]; $("sh-" + k).value = SHAPE_DEF[k]; $("sh-" + k + "O").textContent = SHAPE_DEF[k]; });
+    Array.prototype.forEach.call(document.querySelectorAll("#shPresets button"), function (o) { o.setAttribute("aria-pressed", "false"); });
+    $("sh-on").checked = false; $("sh-on").dispatchEvent(new Event("change"));
+    shapeChanged();
     $("sampleNote").hidden = have.sub; redraw();
   };
   $("reset").onclick = function () {
