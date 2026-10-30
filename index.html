@@ -2462,8 +2462,41 @@ header { height: 48px; }
       });
     }).then(function (out) { return createImageBitmap(out); }).then(function (bmp) {
       var sm = document.createElement("canvas"); sm.width = bmp.width; sm.height = bmp.height;
-      sm.getContext("2d").drawImage(bmp, 0, 0); return sm;
+      sm.getContext("2d").drawImage(bmp, 0, 0);
+      /* the high-quality cut-out sometimes drops a thin arm or hand: restore it from the coarser MediaPipe mask, only close to the person */
+      return personMask(src, sm.width, sm.height).then(function (mk) { try { return restoreLimbs(sm, base, mk); } catch (e) { return sm; } }, function () { return sm; });
     }).catch(function (e) { imglyFailed = true; try { console.warn("imgly cut-out failed, using MediaPipe", e); } catch (x) {} return segmentPersonMP(src); });
+  }
+  function personMask(src, w, h) {
+    return getSegmenter().then(function (seg) {
+      var sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height, k = Math.min(1, 1536 / Math.max(sw, sh));
+      var base = document.createElement("canvas"); base.width = Math.round(sw * k); base.height = Math.round(sh * k);
+      base.getContext("2d").drawImage(src, 0, 0, base.width, base.height);
+      var res = seg.segment(base), mask = res.categoryMask, arr = mask.getAsUint8Array(), mw = mask.width, mh = mask.height, i;
+      var mc = document.createElement("canvas"); mc.width = mw; mc.height = mh;
+      var mx = mc.getContext("2d"), mid = mx.createImageData(mw, mh), md = mid.data;
+      for (i = 0; i < arr.length; i++) { md[i * 4] = md[i * 4 + 1] = md[i * 4 + 2] = 255; md[i * 4 + 3] = arr[i] ? 0 : 255; }
+      mx.putImageData(mid, 0, 0);
+      try { mask.close(); } catch (e) {}
+      var o = document.createElement("canvas"); o.width = w; o.height = h;
+      var ox = o.getContext("2d"); ox.filter = "blur(3px)"; ox.drawImage(mc, 0, 0, w, h);
+      return o;
+    });
+  }
+  function restoreLimbs(sm, base, mk) {
+    var w = sm.width, h = sm.height;
+    var near = document.createElement("canvas"); near.width = w; near.height = h;
+    var nx = near.getContext("2d"); nx.filter = "blur(28px)"; nx.drawImage(sm, 0, 0);
+    var A = sm.getContext("2d").getImageData(0, 0, w, h), a = A.data;
+    var N = nx.getImageData(0, 0, w, h).data, M = mk.getContext("2d").getImageData(0, 0, w, h).data;
+    var bc = document.createElement("canvas"); bc.width = w; bc.height = h;
+    var bx = bc.getContext("2d"); bx.drawImage(base, 0, 0, w, h);
+    var B = bx.getImageData(0, 0, w, h).data, i, n = 0;
+    for (i = 0; i < a.length; i += 4) {
+      if (a[i + 3] < 128 && N[i + 3] > 12 && M[i + 3] > 250) { a[i] = B[i]; a[i + 1] = B[i + 1]; a[i + 2] = B[i + 2]; a[i + 3] = 255; n++; }
+    }
+    if (n) sm.getContext("2d").putImageData(A, 0, 0);
+    return sm;
   }
   function segmentPersonMP(src) {
     return getSegmenter().then(function (seg) {
