@@ -21,7 +21,7 @@
   --accent: #ffffff;
   --accent-fg: #000000;
   --focus: #8fb0ff;
-  --font-body: "BIZ UDPGothic", "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
   --font-mono: "DM Mono", ui-monospace, Consolas, monospace;
   color-scheme: dark;
 }
@@ -484,8 +484,8 @@ header { height: 48px; }
 <script>
 (function () {
   var W = 1080, H = 1440;
-  var SANS = '"BIZ UDPGothic","Hiragino Kaku Gothic ProN","ヒラギノ角ゴ ProN W3","Noto Sans JP","Zen Kaku Gothic New","Yu Gothic","メイリオ",sans-serif';
-  var SERIF = '"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif';
+  var SANS = '"Zen Kaku Gothic New","Noto Sans JP","BIZ UDPGothic","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+  var SERIF = '"Zen Kaku Gothic New","Noto Sans JP","BIZ UDPGothic","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
   var MONO = '"DM Mono",ui-monospace,Consolas,monospace';
   var cv = document.getElementById("cv");
   var ctx = cv.getContext("2d");
@@ -979,7 +979,7 @@ header { height: 48px; }
     c.fillStyle = "#1d46a8";
     var cap = (t.tag || "") + (t.sub ? "\n" + t.sub : ""), cl = cap.split("\n").filter(function (x) { return x.trim(); }).slice(0, 2);
     cl.forEach(function (ln, i) {
-      fit(c, ln, "400", SANS, cl.length === 1 ? 38 : 33, w - cx - 40, 16);
+      fit(c, ln, "500", SANS, cl.length === 1 ? 38 : 33, w - cx - 40, 16);
       c.fillText(ln, cx, cl.length === 1 ? 596 : 576 + i * 37);
     });
 
@@ -989,7 +989,7 @@ header { height: 48px; }
     c.fillStyle = bg; c.fillRect(0, 632, w, 88);
     c.fillStyle = "rgba(255,255,255,.3)"; c.fillRect(0, 632, w, 2);
     if (t.headline) {
-      var hsz = fit(c, t.headline, "900", '"Noto Sans JP","BIZ UDPGothic","Hiragino Kaku Gothic ProN",sans-serif', 60, w - 96, 28);
+      var hsz = fit(c, t.headline, "900", SANS, 60, w - 96, 28);
       c.letterSpacing = Math.round(hsz * -0.03) + "px";
       c.lineJoin = "round"; c.lineWidth = 7; c.strokeStyle = "#0c2a6e"; c.strokeText(t.headline, 48, 678);
       c.fillStyle = "#fff"; c.strokeStyle = "#fff"; c.lineWidth = 1.4; c.strokeText(t.headline, 48, 678); c.fillText(t.headline, 48, 678); c.letterSpacing = "0px";
@@ -1022,18 +1022,18 @@ header { height: 48px; }
     var hl = richLines(t.headline).slice(0, 2);
     c.textAlign = "left"; c.fillStyle = "#fff";
     var hs = hl.length > 1 ? 46 : 62, hfs = hs;
-    hl.forEach(function (l) { hfs = Math.min(hfs, fit(c, charsText(l), "700", SANS, hs, 600, 24)); });
-    c.font = "700 " + hfs + "px " + SANS;
+    hl.forEach(function (l) { hfs = Math.min(hfs, fit(c, charsText(l), "900", SANS, hs, 600, 24)); });
+    c.font = "900 " + hfs + "px " + SANS;
     hl.forEach(function (l, n) { drawRich(c, l, 400, 250 + (n - (hl.length - 1) / 2) * (hfs + 14), "#fff", false); });
     if (t.sub) {
       rr(c, 560, 310, 470, 54, 6); c.fillStyle = "rgba(255,255,255,.96)"; c.fill();
-      c.fillStyle = "#1a2a55"; c.textAlign = "right"; fit(c, t.sub, "700", SANS, 34, 440, 18); c.fillText(t.sub, 1012, 338);
+      c.fillStyle = "#1a2a55"; c.textAlign = "right"; fit(c, t.sub, "900", SANS, 34, 440, 18); c.fillText(t.sub, 1012, 338);
     }
     c.restore();
     c.save(); c.translate(dx * 0.6, 0);
     var rg = c.createRadialGradient(290, 241, 6, 296, 250, 76); rg.addColorStop(0, "#ff4650"); rg.addColorStop(1, "#c3101a");
     c.beginPath(); c.arc(296, 250, 76, 0, Math.PI * 2); c.fillStyle = rg; c.fill(); c.lineWidth = 5; c.strokeStyle = "#fff"; c.stroke();
-    if (t.tag) { c.textAlign = "center"; c.fillStyle = "#fff"; fit(c, t.tag, "700", SANS, 54, 122, 22); c.fillText(t.tag, 296, 252); }
+    if (t.tag) { c.textAlign = "center"; c.fillStyle = "#fff"; fit(c, t.tag, "900", SANS, 54, 122, 22); c.fillText(t.tag, 296, 252); }
     c.restore();
 
     // vertical label (right, left of TikTok's button column)
@@ -1043,7 +1043,7 @@ header { height: 48px; }
       c.shadowColor = "rgba(0,0,0,.35)"; c.shadowBlur = 14; c.shadowOffsetY = 4;
       rr(c, 800, 400, 90, bh, 8); c.fillStyle = "rgba(255,255,255,.97)"; c.fill(); c.shadowColor = "transparent";
       c.textAlign = "center"; c.fillStyle = "#1a2a55";
-      chars.forEach(function (ch, n) { c.font = "700 46px " + SANS; c.fillText(ch, 845, 400 + 22 + step / 2 + n * step); });
+      chars.forEach(function (ch, n) { c.font = "900 46px " + SANS; c.fillText(ch, 845, 400 + 22 + step / 2 + n * step); });
       c.restore();
     }
 
@@ -1051,8 +1051,8 @@ header { height: 48px; }
     var sl = richLines(t.tag2).slice(0, 3);
     if (sl.length && sl.some(function (l) { return l.length; })) {
       c.save(); c.globalAlpha = animSec === undefined ? 1 : ease((animSec - 0.3) / 0.5);
-      var ss = 78, fs2 = ss; sl.forEach(function (l) { fs2 = Math.min(fs2, fit(c, charsText(l), "700", SANS, ss, 840, 34)); });
-      c.font = "700 " + fs2 + "px " + SANS; c.textAlign = "left"; c.lineJoin = "round";
+      var ss = 78, fs2 = ss; sl.forEach(function (l) { fs2 = Math.min(fs2, fit(c, charsText(l), "900", SANS, ss, 840, 34)); });
+      c.font = "900 " + fs2 + "px " + SANS; c.textAlign = "left"; c.lineJoin = "round";
       var lead = Math.round(fs2 * 1.28), y0 = 1330 - ((sl.length - 1) * lead) / 2;
       sl.forEach(function (l, n) {
         var x = 60, y = y0 + n * lead, a = 0, b, run, col;
@@ -1559,7 +1559,7 @@ header { height: 48px; }
     if (!ch.length) return;
     ch.forEach(function (c) { glyphDone[c] = 1; });
     var txt = ch.join("");
-    Promise.all(['400 40px "BIZ UDPGothic"', '700 40px "BIZ UDPGothic"', '900 40px "Noto Sans JP"', '700 40px "Noto Sans JP"', '900 40px "Zen Kaku Gothic New"', '700 40px "Zen Kaku Gothic New"', '900 40px "Noto Serif JP"', '700 40px "Noto Serif JP"'].map(function (f) {
+    Promise.all(['500 40px "Zen Kaku Gothic New"', '400 40px "BIZ UDPGothic"', '700 40px "BIZ UDPGothic"', '900 40px "Noto Sans JP"', '700 40px "Noto Sans JP"', '900 40px "Zen Kaku Gothic New"', '700 40px "Zen Kaku Gothic New"', '900 40px "Noto Serif JP"', '700 40px "Noto Serif JP"'].map(function (f) {
       return document.fonts.load(f, txt).catch(function () {});
     })).then(function () { clearTimeout(glyphTimer); glyphTimer = setTimeout(function () { render(); schedThumbs(); }, 50); });
   }
