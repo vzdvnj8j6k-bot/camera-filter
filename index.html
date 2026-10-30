@@ -169,17 +169,47 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 .tab[hidden] { display: none; }
 .sheet.tab-off { display: none; }
 .step { margin: 0 0 -6px 2px; font-size: 0.76rem; color: var(--muted); font-weight: 500; }
-@media (min-width: 900px) {
-  .app { max-width: 1020px; grid-template-columns: 440px minmax(0, 1fr); column-gap: 28px; align-items: start; }
-  .app > header { grid-column: 1 / -1; }
-  .app > .shot { grid-column: 1; grid-row: 2 / span 30; position: sticky; top: 8px; }
-  .app > :not(header):not(.shot) { grid-column: 2; }
-}
-.pastebar { display: grid; gap: 8px; }
-.shot .hint { bottom: 76px; }
-.dl { width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 13px; border: 0; border-radius: 999px; background: var(--fg); color: var(--bg); font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
-.dl svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.pastebar input[type="text"] { border: 1.5px dashed #3a3a3c; background: transparent; }
+
+/* LINE-camera style: preview on top, a tool bar fixed at the bottom, and one panel (frames / text / photo / ...) that opens above it */
+header { grid-template-columns: 44px 1fr auto; }
+.hdr-r { gap: 2px; align-items: center; }
+.savebtn { margin-left: 6px; border: 0; border-radius: 999px; padding: 9px 18px; background: var(--fg); color: var(--bg); font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+.app { padding-bottom: calc(var(--tray-h, 300px) + 12px); gap: 10px; }
+.shot { width: fit-content; margin: 0 auto; }
+canvas#cv { margin: 0 auto; }
+.step, .dl, .shutter { display: none; }
+.tray { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: #101010; border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); box-shadow: 0 -10px 30px rgba(0,0,0,.5); }
+.panel, .tabs { max-width: 480px; margin: 0 auto; }
+.panel[hidden] { display: none; }
+.ph { display: grid; grid-template-columns: 48px 1fr 48px; align-items: center; height: 46px; padding: 0 8px; }
+.ph span { text-align: center; font-weight: 700; font-size: 0.92rem; }
+.pbtn { width: 40px; height: 40px; border: 0; border-radius: 50%; background: transparent; color: var(--fg); display: grid; place-items: center; cursor: pointer; }
+.pbtn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#pOk { color: #4cc3ff; }
+.pbody { max-height: 38dvh; overflow-y: auto; padding: 4px 16px 14px; display: grid; gap: 12px; align-content: start; }
+.pbody .sheet { background: transparent; padding: 0; }
+.pbody .picker { padding: 2px 0 4px; }
+.pbody [data-tab].tab-off { display: none; }
+.tabs { position: static; top: auto; display: flex; gap: 0; background: transparent; padding: 6px 8px 8px; justify-content: space-between; overflow-x: auto; }
+.tab { flex: 1 0 0; min-width: 58px; background: transparent; color: var(--muted); border-radius: 12px; padding: 6px 4px; font-size: 0.68rem; }
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-selected="true"] { background: transparent; color: var(--fg); }
+.tab[aria-selected="true"] svg { stroke: #4cc3ff; }
+.pickrow { display: flex; gap: 18px; justify-content: center; padding: 2px 0; }
+.pickrow .pick { color: var(--fg); }
+.pickrow .pick.off { display: none; }
+#shPresets { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+#shPresets button { flex: none; width: 74px; display: grid; justify-items: center; gap: 6px; background: transparent; padding: 0; font-size: 0.68rem; line-height: 1.25; color: var(--muted); }
+#shPresets button::before { content: "🙂"; width: 60px; height: 60px; border-radius: 50%; background: var(--surface-2); display: grid; place-items: center; font-size: 28px; outline: 2px solid transparent; outline-offset: 2px; }
+#shPresets button[aria-pressed="true"] { background: transparent; color: var(--fg); font-weight: 700; }
+#shPresets button[aria-pressed="true"]::before { outline-color: #4cc3ff; }
+#shPresets [data-p="model"]::before { content: "👩"; } #shPresets [data-p="male"]::before { content: "👨"; }
+#shPresets [data-p="plastic"]::before { content: "✨"; } #shPresets [data-p="over"]::before { content: "😳"; }
+#shPresets [data-p="doll"]::before { content: "🎀"; } #shPresets [data-p="vigor"]::before { content: "😲"; }
+#shPresets [data-p="smile"]::before { content: "😄"; } #shPresets [data-p="sleepy"]::before { content: "😪"; }
+#shPresets [data-p="chubby"]::before { content: "😊"; } #shPresets [data-p="heavy"]::before { content: "🍔"; }
+.fcard { width: 88px; } .fcard canvas { width: 88px; height: 117px; }
+.fcard[aria-pressed="true"] canvas { outline-color: #4cc3ff; }
 </style>
 
 
@@ -193,6 +223,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     </button>
     <h1>フレーム劇場</h1>
     <div class="hdr-r">
+      <button class="savebtn" type="button" id="saveTop">保存</button>
       <button class="icon off" type="button" id="swap" aria-label="2枚を入れ替える">
         <svg viewBox="0 0 24 24"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg>
       </button>
@@ -208,28 +239,35 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
   <div class="shot">
     <canvas id="cv" width="1080" height="1440" role="img" aria-label="選んだ枠を重ねた写真のプレビュー"></canvas>
     <button type="button" class="sh-badge" id="shBadge" hidden>顔を加工中（タップで解除）</button>
-    <button type="button" class="dl" id="dl"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>画像をダウンロード</button>
     <div class="hint" id="hint" hidden>小さい写真をタップで入れ替え</div>
   </div>
+  <div id="msg" role="status"></div>
 
-  <div class="pastebar">
+  <div id="msg" role="status"></div>
+</div>
+
+<button class="shutter" type="button" id="save" aria-label="画像を保存" hidden><i></i></button>
+  <div class="tray" id="tray">
+    <div class="panel" id="panel">
+      <div class="ph"><button type="button" class="pbtn" id="pClose" aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><span id="pTitle">枠</span><button type="button" class="pbtn" id="pOk" aria-label="決定"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></button></div>
+      <div class="pbody" id="pbody">
+        <div class="pickrow" data-tab="photo">
+        <button class="pick" type="button" id="dropMain" aria-label="写真を選ぶ">
+          <span class="thumb" id="thumbMain"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg></span>
+          <span id="mainLabel">写真</span>
+        </button>
+        <button class="pick off" type="button" id="dropSub" aria-label="インセット写真を選ぶ">
+          <span class="thumb" id="thumbSub"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4 21c1-4.5 4-6 8-6s7 1.5 8 6"/></svg></span>
+          自撮り
+        </button>
+        </div>
+  <div class="pastebar" data-tab="photo">
     <input type="text" id="pasteBox" placeholder="📋 ここに写真を貼り付け(Ctrl+V / 長押し)※文字は入力できません" aria-label="メイン写真を貼り付け" autocomplete="off">
     <input type="text" id="subPasteBox" placeholder="自撮り写真を貼り付け(長押しでペースト)" aria-label="自撮り写真を貼り付け" autocomplete="off" style="display:none">
     <p class="small" id="sampleNote">いまはサンプル画像です。下のボタンで選ぶか、コピーした写真を貼り付けると置き換わります。写真は端末内だけで処理されます。</p>
   </div>
 
-  <p class="step">① 枠を選ぶ</p>
-  <div class="picker" id="picker" role="group" aria-label="枠を選ぶ"></div>
-
-  <p class="step">② 文字・写真・加工を整える</p>
-  <div class="tabs" id="tabs" role="tablist">
-    <button class="tab" type="button" role="tab" data-tab="text" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/></svg>文字</button>
-    <button class="tab" type="button" role="tab" data-tab="photo" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg>写真</button>
-    <button class="tab" type="button" role="tab" data-tab="face" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8.5 15c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8"/></svg>顔加工</button>
-    <button class="tab" type="button" role="tab" data-tab="cut" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4-6 8-6s7 1.5 8 6"/></svg>切り抜き</button>
-    <button class="tab" type="button" role="tab" data-tab="video" aria-selected="false" id="tabVideo"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>動画</button>
-  </div>
-
+  <div class="picker" data-tab="frames" id="picker" role="group" aria-label="枠を選ぶ"></div>
   <div class="sheet collapsed" id="fieldsSheet" data-tab="text">
     <p class="small">画像の文字を直接タップすると、その場で書き換えられます。空の項目などはここから入力できます。</p>
     <div id="fieldChips" class="chips" role="group" aria-label="編集する項目"></div>
@@ -355,22 +393,18 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     </div>
   </div>
 
-  <div id="msg" role="status"></div>
-</div>
-
-<div class="dock">
-  <div class="dock-in">
-    <button class="pick" type="button" id="dropMain" aria-label="写真を選ぶ">
-      <span class="thumb" id="thumbMain"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg></span>
-      <span id="mainLabel">写真</span>
-    </button>
-    <button class="shutter" type="button" id="save" aria-label="画像を保存"><i></i></button>
-    <button class="pick off" type="button" id="dropSub" aria-label="インセット写真を選ぶ">
-      <span class="thumb" id="thumbSub"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="4"/><path d="M4 21c1-4.5 4-6 8-6s7 1.5 8 6"/></svg></span>
-      自撮り
-    </button>
+      </div>
+    </div>
+  <div class="tabs" id="tabs" role="tablist">
+    <button class="tab" type="button" role="tab" data-tab="frames" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><rect x="7" y="14" width="10" height="4" rx="1"/></svg>枠</button>
+    <button class="tab" type="button" role="tab" data-tab="text" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/></svg>文字</button>
+    <button class="tab" type="button" role="tab" data-tab="photo" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg>写真</button>
+    <button class="tab" type="button" role="tab" data-tab="face" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8.5 15c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8"/></svg>顔加工</button>
+    <button class="tab" type="button" role="tab" data-tab="cut" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4-6 8-6s7 1.5 8 6"/></svg>切り抜き</button>
+    <button class="tab" type="button" role="tab" data-tab="video" aria-selected="false" id="tabVideo"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>動画</button>
   </div>
-</div>
+
+  </div>
 <input type="file" id="fileMain" accept="image/*">
 <input type="file" id="fileSub" accept="image/*">
 
@@ -1509,22 +1543,33 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
 
 
   /* tabs: show one sheet group at a time */
-  var curTab = "text";
+  var curTab = "frames", TAB_TITLE = { frames: "枠を選ぶ", text: "文字", photo: "写真", face: "顔加工", cut: "切り抜き", video: "動画・カメラ" };
+  function fitPreview() {
+    var tray = $("tray"), hdr = document.querySelector("header"), app = document.querySelector(".app");
+    var trayH = tray.offsetHeight; document.documentElement.style.setProperty("--tray-h", trayH + "px");
+    var avail = window.innerHeight - hdr.offsetHeight - trayH - 64, ar = cv.width / cv.height;
+    cv.style.width = Math.max(140, Math.min(app.clientWidth, avail * ar)) + "px";
+  }
   function syncTabs() {
-    if ($("tvSheet").hidden && curTab === "video") curTab = "text";
-    if ($("cutSheet").hidden && curTab === "cut") curTab = "text";
+    if ($("tvSheet").hidden && curTab === "video") curTab = "frames";
+    if ($("cutSheet").hidden && curTab === "cut") curTab = "frames";
     $("tabVideo").hidden = $("tvSheet").hidden;
     var tc = document.querySelector('.tab[data-tab="cut"]'); if (tc) tc.hidden = $("cutSheet").hidden;
     Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (b) {
       b.setAttribute("aria-selected", b.getAttribute("data-tab") === curTab ? "true" : "false");
     });
-    Array.prototype.forEach.call(document.querySelectorAll(".sheet[data-tab]"), function (sh) {
+    Array.prototype.forEach.call(document.querySelectorAll("#pbody [data-tab]"), function (sh) {
       sh.classList.toggle("tab-off", sh.getAttribute("data-tab") !== curTab);
     });
+    $("panel").hidden = !curTab; $("pTitle").textContent = TAB_TITLE[curTab] || "";
+    fitPreview();
   }
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function (b) {
-    b.onclick = function () { curTab = b.getAttribute("data-tab"); syncTabs(); };
+    b.onclick = function () { var t = b.getAttribute("data-tab"); curTab = curTab === t ? null : t; syncTabs(); };
   });
+  $("pClose").onclick = $("pOk").onclick = function () { curTab = null; syncTabs(); };
+  window.addEventListener("resize", fitPreview);
+  if (window.ResizeObserver) new ResizeObserver(fitPreview).observe($("tray"));
 
   function choose(id) {
     state.cur = id;
@@ -1561,7 +1606,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     $("hint").hidden = false; clearTimeout(hintTimer);
     hintTimer = setTimeout(function () { $("hint").hidden = true; }, 2600);
     $("mainLabel").textContent = two ? "メイン" : "写真";
-    render(); save();
+    render(); save(); fitPreview();
   }
 
   FIELD_KEYS.forEach(function (k) {
@@ -2939,7 +2984,7 @@ input.ep-input { height: 50px; font-size: 16px; font-weight: 700; border-radius:
     }, "image/png");
   };
 
-  $("dl").onclick = function () { $("save").onclick(); };
+  $("saveTop").onclick = function () { $("save").onclick(); };
 
   /* persistence: texts, colors, settings in localStorage; photos in IndexedDB, so a reload keeps the work */
   var STORE_KEY = "dualshot.v1", defaults = JSON.parse(JSON.stringify(texts)), saveTimer = null, blobs = { main: null, sub: null };
