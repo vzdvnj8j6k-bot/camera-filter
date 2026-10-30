@@ -1019,16 +1019,16 @@ header { height: 48px; }
     // headline banner (right of the clock) with a red badge overlapping its left end
     c.save(); c.translate(-dx * 0 + (1 - k) * 700, 0);
     var bg = c.createLinearGradient(0, 190, 0, 310); bg.addColorStop(0, "#1a3272"); bg.addColorStop(1, "#0a1636");
-    rr(c, 330, 190, 700, 120, 10); c.fillStyle = bg; c.fill(); c.lineWidth = 3; c.strokeStyle = "#fff"; c.stroke();
+    rr(c, 330, 190, 580, 120, 10); c.fillStyle = bg; c.fill(); c.lineWidth = 3; c.strokeStyle = "#fff"; c.stroke();
     var hl = richLines(t.headline).slice(0, 2);
     c.textAlign = "left"; c.fillStyle = "#fff";
     var hs = hl.length > 1 ? 46 : 62, hfs = hs;
-    hl.forEach(function (l) { hfs = Math.min(hfs, fit(c, charsText(l), "900", SANS, hs, 600, 24)); });
+    hl.forEach(function (l) { hfs = Math.min(hfs, fit(c, charsText(l), "900", SANS, hs, 480, 24)); });
     c.font = "900 " + hfs + "px " + SANS;
     hl.forEach(function (l, n) { drawRich(c, l, 400, 250 + (n - (hl.length - 1) / 2) * (hfs + 14), "#fff", false); });
     if (t.sub) {
-      rr(c, 560, 310, 470, 54, 6); c.fillStyle = "rgba(255,255,255,.96)"; c.fill();
-      c.fillStyle = "#1a2a55"; c.textAlign = "right"; fit(c, t.sub, "900", SANS, 34, 440, 18); c.fillText(t.sub, 1012, 338);
+      rr(c, 450, 310, 460, 54, 6); c.fillStyle = "rgba(255,255,255,.96)"; c.fill();
+      c.fillStyle = "#1a2a55"; c.textAlign = "right"; fit(c, t.sub, "900", SANS, 34, 430, 18); c.fillText(t.sub, 892, 338);
     }
     c.restore();
     c.save(); c.translate(dx * 0.6, 0);
