@@ -1484,7 +1484,7 @@ header { height: 48px; }
   F.sleeper = { name: "ショートスリーパー(縦)", fields: { headline: "上の大きな文字（改行できます）", place: "ゲージの名前", tag: "ゲージの数値（12% など）", name: "左下のユーザー名", sub: "左下のひとこと" } };
   F.sleeper.draw = function (c, S) {
     var w = W, h = H, t = S.t, photo = S.shp || S.main;
-    c.filter = "none"; cover(c, photo, 0, 0, w, h); c.filter = "none";
+    c.filter = "none"; if (!S.noPhoto) cover(c, photo, 0, 0, w, h); c.filter = "none";
     if (t.headline) { var tg = c.createLinearGradient(0, 0, 0, 520); tg.addColorStop(0, "rgba(0,0,0,.55)"); tg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = tg; c.fillRect(0, 0, w, 520); }
     if (t.place || t.tag || t.name || t.sub) { var bgr = c.createLinearGradient(0, h - 380, 0, h); bgr.addColorStop(0, "rgba(0,0,0,0)"); bgr.addColorStop(1, "rgba(0,0,0,.6)"); c.fillStyle = bgr; c.fillRect(0, h - 380, w, 380); }
     c.textBaseline = "middle"; c.textAlign = "center"; c.lineJoin = "round";
@@ -1799,7 +1799,7 @@ header { height: 48px; }
       if (k in fl) { $("l-" + k).textContent = fl[k]; $("f-" + k).value = texts[id][k] || ""; }
     });
     closeEditor();
-    $("tvSheet").hidden = !isTVFrame(id);
+    $("tvSheet").hidden = !(isTVFrame(id) || id === "sleeper");
     syncTabs();
     $("opt-led").hidden = id !== "led";
     $("opt-dual").hidden = id !== "dual";
