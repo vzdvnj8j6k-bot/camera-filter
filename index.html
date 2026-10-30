@@ -8,7 +8,7 @@
 ﻿<title>フレーム劇場</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Noto+Sans+JP:wght@700;900&family=Noto+Serif+JP:wght@700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=BIZ+UDPGothic:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Noto+Sans+JP:wght@700;900&family=Noto+Serif+JP:wght@700;900&display=swap">
 <style>
 /* Layout: a single phone-width column on black, like a camera app. Header, 3:4 shot, a scrolling row of frame cards, text fields and options for the chosen frame, and a bottom dock with the shutter-style save button. */
 :root {
@@ -484,7 +484,7 @@ header { height: 48px; }
 <script>
 (function () {
   var W = 1080, H = 1440;
-  var SANS = '"Hiragino Kaku Gothic ProN","ヒラギノ角ゴ ProN W3","Noto Sans JP","Zen Kaku Gothic New","Yu Gothic","メイリオ",sans-serif';
+  var SANS = '"BIZ UDPGothic","Hiragino Kaku Gothic ProN","ヒラギノ角ゴ ProN W3","Noto Sans JP","Zen Kaku Gothic New","Yu Gothic","メイリオ",sans-serif';
   var SERIF = '"Noto Serif JP","Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif';
   var MONO = '"DM Mono",ui-monospace,Consolas,monospace';
   var cv = document.getElementById("cv");
@@ -1558,7 +1558,7 @@ header { height: 48px; }
     if (!ch.length) return;
     ch.forEach(function (c) { glyphDone[c] = 1; });
     var txt = ch.join("");
-    Promise.all(['900 40px "Noto Sans JP"', '700 40px "Noto Sans JP"', '900 40px "Zen Kaku Gothic New"', '700 40px "Zen Kaku Gothic New"', '900 40px "Noto Serif JP"', '700 40px "Noto Serif JP"'].map(function (f) {
+    Promise.all(['700 40px "BIZ UDPGothic"', '900 40px "Noto Sans JP"', '700 40px "Noto Sans JP"', '900 40px "Zen Kaku Gothic New"', '700 40px "Zen Kaku Gothic New"', '900 40px "Noto Serif JP"', '700 40px "Noto Serif JP"'].map(function (f) {
       return document.fonts.load(f, txt).catch(function () {});
     })).then(function () { clearTimeout(glyphTimer); glyphTimer = setTimeout(function () { render(); schedThumbs(); }, 50); });
   }
