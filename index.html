@@ -1072,7 +1072,7 @@ header { height: 48px; }
           while (b < l.length && l[b].col === col) run += l[b++].ch;
           c.lineWidth = Math.round(fs2 * (col ? 0.2 : 0.16)); c.strokeStyle = "#000"; c.strokeText(run, x, y);
           if (col) { c.lineWidth = Math.round(fs2 * 0.1); c.strokeStyle = "#fff"; c.strokeText(run, x, y); }
-          c.fillStyle = col || "#fff"; c.fillText(run, x, y);
+          c.fillStyle = col === "#1747c8" ? "#58a0ff" : (col || "#fff"); c.fillText(run, x, y);
           x += c.measureText(run).width; a = b;
         }
       });
