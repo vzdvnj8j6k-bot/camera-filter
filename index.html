@@ -237,6 +237,7 @@ canvas#cv { border-radius: 12px; }
 .tab[data-tab="frames"][aria-selected="true"] { color: #ffd000; }
 .sh-badge { display: none !important; }
 
+.savebtn { white-space: nowrap; flex: none; }
 /* phone sizing: keep the preview big while a panel is open */
 header h1 { white-space: nowrap; font-size: 1rem; }
 header { height: 48px; }
@@ -1430,7 +1431,7 @@ header { height: 48px; }
     Object.keys(t).forEach(function (k) { if (typeof t[k] === "string" && rk.indexOf(k) < 0) t[k] = plain(t[k]); });
     if (KEEP[id]) KEEP[id].forEach(function (k) { if (!t[k]) t[k] = placeholder(k); });
     var shapeReady = shaped.canvas && shaped.src === state.main;
-    return { orig: state.main, shp: shapeReady ? shaped.canvas : null, pbase: shapeReady ? shaped.canvas : state.main, person: (profCut && profCut.src === (shapeReady ? shaped.canvas : state.main)) ? profCut : null, main: cutReady ? poster.canvas : (shapeReady ? shaped.canvas : state.main), sub: state.sub, t: t, o: opts, a: animSec };
+    return { orig: state.main, shp: shapeReady ? shaped.canvas : null, pbase: shapeReady ? shaped.canvas : state.main, person: (profCut && profCut.canvas && (profCut.src === (shapeReady ? shaped.canvas : state.main) || profCut.orig === state.main)) ? profCut : null, main: cutReady ? poster.canvas : (shapeReady ? shaped.canvas : state.main), sub: state.sub, t: t, o: opts, a: animSec };
   }
 
   /* TV look + animation */
@@ -2522,9 +2523,9 @@ header { height: 48px; }
       var w = sm.width, h = sm.height, d = sm.getContext("2d").getImageData(0, 0, w, h).data, x0 = w, y0 = h, x1 = 0, y1 = 0, x, y;
       for (y = 0; y < h; y += 2) for (x = 0; x < w; x += 2) if (d[(y * w + x) * 4 + 3] > 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
       var ok = x1 > x0 && y1 > y0;
-      profCut = { src: base, canvas: ok ? sm : null, box: ok ? { x: Math.max(0, x0 - 4), y: Math.max(0, y0 - 4), w: Math.min(w, x1 - x0 + 8), h: Math.min(h, y1 - y0 + 8) } : null };
+      profCut = { src: base, orig: state.main, canvas: ok ? sm : null, box: ok ? { x: Math.max(0, x0 - 4), y: Math.max(0, y0 - 4), w: Math.min(w, x1 - x0 + 8), h: Math.min(h, y1 - y0 + 8) } : null };
       profBusy = false; redraw();
-    }).catch(function () { profCut = { src: base, canvas: null, box: null }; profBusy = false; redraw(); });
+    }).catch(function () { profCut = { src: base, orig: state.main, canvas: null, box: null }; profBusy = false; redraw(); });
   }
   function buildPoster() {
     if (!cut) return;
