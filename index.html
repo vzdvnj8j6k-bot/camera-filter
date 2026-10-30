@@ -230,6 +230,11 @@ canvas#cv { margin: 0 auto; }
 .tab[aria-selected="true"] { color: #fff; font-weight: 700; }
 .tab[aria-selected="true"] svg { stroke: currentColor; }
 canvas#cv { border-radius: 12px; }
+
+.pbody .picker { -webkit-mask-image: linear-gradient(to right, #000 88%, transparent); mask-image: linear-gradient(to right, #000 88%, transparent); padding-right: 24px; }
+.fcard span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tab[data-tab="frames"] { color: #ffd000; }
+.tab[data-tab="frames"][aria-selected="true"] { color: #ffd000; }
 </style>
 
 
@@ -269,7 +274,7 @@ canvas#cv { border-radius: 12px; }
 <button class="shutter" type="button" id="save" aria-label="画像を保存" hidden><i></i></button>
   <div class="tray" id="tray">
     <div class="panel" id="panel">
-      <div class="ph"><button type="button" class="pbtn" id="pClose" aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><span id="pTitle">枠</span><button type="button" class="pbtn" id="pOk" aria-label="決定"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></button></div>
+      <div class="ph"><button type="button" class="pbtn" id="pClose" aria-label="閉じる"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button><span id="pTitle">フィルターを選ぶ</span><button type="button" class="pbtn" id="pOk" aria-label="決定"><svg viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></button></div>
       <div class="pbody" id="pbody">
         <div class="pickrow" data-tab="photo">
                 <button class="pick off" type="button" id="dropSub" aria-label="インセット写真を選ぶ">
@@ -422,7 +427,7 @@ canvas#cv { border-radius: 12px; }
       <button class="flipbtn" type="button" id="camFlip" aria-label="カメラを使う"><svg viewBox="0 0 24 24"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M20 15v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/><path d="m17 6 3 3 3-3"/><path d="m7 18-3-3-3 3"/></svg></button>
     </div>
   <div class="tabs" id="tabs" role="tablist">
-    <button class="tab" type="button" role="tab" data-tab="frames" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><rect x="7" y="14" width="10" height="4" rx="1"/></svg>枠</button>
+    <button class="tab" type="button" role="tab" data-tab="frames" aria-selected="true"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="3"/><rect x="7" y="14" width="10" height="4" rx="1"/></svg>フィルター</button>
     <button class="tab" type="button" role="tab" data-tab="photo" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg>写真</button>
     <button class="tab" type="button" role="tab" data-tab="text" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M4 7V5h16v2"/><path d="M12 5v14"/><path d="M9 19h6"/></svg>文字</button>
     <button class="tab" type="button" role="tab" data-tab="face" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 10h.01M15 10h.01"/><path d="M8.5 15c1 1.2 2.2 1.8 3.5 1.8s2.5-.6 3.5-1.8"/></svg>顔加工</button>
@@ -1569,7 +1574,7 @@ canvas#cv { border-radius: 12px; }
 
 
   /* tabs: show one sheet group at a time */
-  var curTab = "frames", TAB_TITLE = { frames: "枠を選ぶ", text: "文字", photo: "写真", face: "顔加工", cut: "切り抜き", video: "動き・書き出し" };
+  var curTab = "frames", TAB_TITLE = { frames: "フィルターを選ぶ", text: "文字", photo: "写真", face: "顔加工", cut: "切り抜き", video: "動き・書き出し" };
   function fitPreview() {
     var tray = $("tray"), hdr = document.querySelector("header"), app = document.querySelector(".app");
     var trayH = tray.offsetHeight; document.documentElement.style.setProperty("--tray-h", trayH + "px");
@@ -1633,6 +1638,8 @@ canvas#cv { border-radius: 12px; }
     hintTimer = setTimeout(function () { $("hint").hidden = true; }, 2600);
     $("mainLabel").textContent = two ? "メイン" : "写真";
     render(); save(); fitPreview();
+    var cur = picker.querySelector('.fcard[aria-pressed="true"]');
+    if (cur && cur.scrollIntoView) { try { cur.scrollIntoView({ inline: "center", block: "nearest" }); } catch (e) {} }
   }
 
   FIELD_KEYS.forEach(function (k) {
