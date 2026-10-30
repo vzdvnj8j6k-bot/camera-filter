@@ -1060,7 +1060,7 @@ header { height: 48px; }
       c.save(); c.globalAlpha = animSec === undefined ? 1 : ease((animSec - 0.3) / 0.5);
       var ss = 78, fs2 = ss; sl.forEach(function (l) { fs2 = Math.min(fs2, fit(c, charsText(l), "900", SANS, ss, 840, 34)); });
       c.font = "900 " + fs2 + "px " + SANS; c.textAlign = "left"; c.lineJoin = "round";
-      var lead = Math.round(fs2 * 1.28), y0 = 1240 - ((sl.length - 1) * lead) / 2;
+      var lead = Math.round(fs2 * 1.28), y0 = 1390 - ((sl.length - 1) * lead) / 2;
       var bt = y0 - fs2 * 1.5, bb = y0 + (sl.length - 1) * lead + fs2 * 1.3, bgd = c.createLinearGradient(0, bt, 0, bb);
       bgd.addColorStop(0, "rgba(0,0,0,0)"); bgd.addColorStop(0.28, "rgba(0,0,0,.52)"); bgd.addColorStop(0.72, "rgba(0,0,0,.52)"); bgd.addColorStop(1, "rgba(0,0,0,0)");
       c.fillStyle = bgd; c.fillRect(0, bt, w, bb - bt);
