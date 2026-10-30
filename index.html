@@ -1024,8 +1024,9 @@ header { height: 48px; }
     c.textAlign = "left"; c.fillStyle = "#fff";
     var hs = hl.length > 1 ? 46 : 62, hfs = hs;
     hl.forEach(function (l) { hfs = Math.min(hfs, fit(c, charsText(l), "900", SANS, hs, 480, 24)); });
-    c.font = "900 " + hfs + "px " + SANS;
+    c.font = "900 " + hfs + "px " + SANS; c.letterSpacing = Math.round(hfs * -0.03) + "px";
     hl.forEach(function (l, n) { drawRich(c, l, 400, 250 + (n - (hl.length - 1) / 2) * (hfs + 14), "#fff", false); });
+    c.letterSpacing = "0px";
     if (t.sub) {
       rr(c, 450, 310, 460, 54, 6); c.fillStyle = "rgba(255,255,255,.96)"; c.fill();
       c.fillStyle = "#1a2a55"; c.textAlign = "right"; fit(c, t.sub, "900", SANS, 34, 430, 18); c.fillText(t.sub, 892, 338);
@@ -1058,7 +1059,11 @@ header { height: 48px; }
       c.save(); c.globalAlpha = animSec === undefined ? 1 : ease((animSec - 0.3) / 0.5);
       var ss = 78, fs2 = ss; sl.forEach(function (l) { fs2 = Math.min(fs2, fit(c, charsText(l), "900", SANS, ss, 840, 34)); });
       c.font = "900 " + fs2 + "px " + SANS; c.textAlign = "left"; c.lineJoin = "round";
-      var lead = Math.round(fs2 * 1.28), y0 = 1330 - ((sl.length - 1) * lead) / 2;
+      var lead = Math.round(fs2 * 1.28), y0 = 1240 - ((sl.length - 1) * lead) / 2;
+      var bt = y0 - fs2 * 1.5, bb = y0 + (sl.length - 1) * lead + fs2 * 1.3, bgd = c.createLinearGradient(0, bt, 0, bb);
+      bgd.addColorStop(0, "rgba(0,0,0,0)"); bgd.addColorStop(0.28, "rgba(0,0,0,.52)"); bgd.addColorStop(0.72, "rgba(0,0,0,.52)"); bgd.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = bgd; c.fillRect(0, bt, w, bb - bt);
+      c.shadowColor = "rgba(0,0,0,.6)"; c.shadowBlur = 6; c.shadowOffsetY = 3;
       sl.forEach(function (l, n) {
         var x = 60, y = y0 + n * lead, a = 0, b, run, col;
         while (a < l.length) {
@@ -1425,7 +1430,7 @@ header { height: 48px; }
   var texts = {
     news: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newsr: { name: "ニュース24", tag: "速報", headline: "本日の主役 \u201cあなた\u201dに決定", sub: "", place: "NEWS24", when: "きのう 渋谷署", tag2: "BREAKING NEWS", ticker: "全国の注目を集める", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
-    street: { time: "16:20", tag: "話題", headline: "SNSで話題\n可愛すぎる女の子", sub: "全国から称賛の声", place: "話題の女の子", tag2: "え、私ですか？\n⟦青:ほんとですか？⟧ありがとうございます" },
+    street: { time: "16:20", tag: "速報", headline: "SNSで話題\n可愛すぎる女の子", sub: "全国から称賛の声", place: "街頭インタビュー", tag2: "え、私ですか？\n⟦青:ほんとですか？⟧ありがとうございます" },
     intv: { name: "山田 太郎", tag: "1日30分睡眠のショートスリーパー", headline: "1日30分! 超ショートスリーパー生活の実態" },
     newsw: { name: "ニュース24", tag: "急転", headline: "本日の主役が決定", sub: "その理由とは?", place: "東京・渋谷", when: "本日 夕方", tag2: "逮捕", ticker: "ニュース24・元支店長代理", time: "あなた", suf: "容疑者(20)", scroll: "・株式市場は続伸　・明日は広く雨　・プロ野球日本シリーズ第3戦は引き分け　・電気料金が来月から値上げ　・新型スマートフォン発売　・高速道路で多重事故　・気温は平年を上回る見込み　・為替1ドル=153円台　・本屋大賞候補作発表" },
     newst: { name: "ニュース24", tag: "SNSに自撮りを投稿しすぎたか", place: "男逮捕「いいねが欲しかった」", red: "余罪も追及へ", blue: "", time: "あなた", suf: "容疑者", ticker: "きのう～今日", headline: "商業施設で自撮りを繰り返し\n友人に見せるなどした疑い" },
