@@ -972,14 +972,14 @@ header { height: 48px; }
     c.fillStyle = "#c9ccd2"; c.fillRect(0, 630, w, 2);
     c.textAlign = "left"; c.textBaseline = "middle"; c.fillStyle = "#111";
     var nw = 0;
-    if (t.name) { fit(c, t.name, "700", SANS, 58, 380, 26); nw = c.measureText(t.name).width; c.lineJoin = "round"; c.lineWidth = 1.4; c.strokeStyle = "#111"; c.strokeText(t.name, 48, 596); c.fillText(t.name, 48, 596); }
+    if (t.name) { fit(c, t.name, "700", SANS, 58, 380, 26); nw = c.measureText(t.name).width; c.lineJoin = "round"; c.lineWidth = 2.6; c.strokeStyle = "#111"; c.strokeText(t.name, 48, 596); c.fillText(t.name, 48, 596); }
     var cx = 48 + nw + 26;
     c.fillStyle = "#b5b9c1"; c.fillRect(cx, 570, 3, 48);
     cx += 22;
-    c.fillStyle = "#2a2d33";
+    c.fillStyle = "#1d46a8";
     var cap = (t.tag || "") + (t.sub ? "\n" + t.sub : ""), cl = cap.split("\n").filter(function (x) { return x.trim(); }).slice(0, 2);
     cl.forEach(function (ln, i) {
-      fit(c, ln, "700", SANS, cl.length === 1 ? 38 : 33, w - cx - 40, 16);
+      fit(c, ln, "400", SANS, cl.length === 1 ? 38 : 33, w - cx - 40, 16);
       c.fillText(ln, cx, cl.length === 1 ? 596 : 576 + i * 37);
     });
 
@@ -991,7 +991,7 @@ header { height: 48px; }
     if (t.headline) {
       fit(c, t.headline, "900", SANS, 60, w - 96, 28);
       c.lineJoin = "round"; c.lineWidth = 7; c.strokeStyle = "#0c2a6e"; c.strokeText(t.headline, 48, 678);
-      c.fillStyle = "#fff"; c.fillText(t.headline, 48, 678);
+      c.fillStyle = "#fff"; c.strokeStyle = "#fff"; c.lineWidth = 2.6; c.strokeText(t.headline, 48, 678); c.fillText(t.headline, 48, 678);
     }
   };
 
@@ -1558,7 +1558,7 @@ header { height: 48px; }
     if (!ch.length) return;
     ch.forEach(function (c) { glyphDone[c] = 1; });
     var txt = ch.join("");
-    Promise.all(['700 40px "BIZ UDPGothic"', '900 40px "Noto Sans JP"', '700 40px "Noto Sans JP"', '900 40px "Zen Kaku Gothic New"', '700 40px "Zen Kaku Gothic New"', '900 40px "Noto Serif JP"', '700 40px "Noto Serif JP"'].map(function (f) {
+    Promise.all(['400 40px "BIZ UDPGothic"', '700 40px "BIZ UDPGothic"', '900 40px "Noto Sans JP"', '700 40px "Noto Sans JP"', '900 40px "Zen Kaku Gothic New"', '700 40px "Zen Kaku Gothic New"', '900 40px "Noto Serif JP"', '700 40px "Noto Serif JP"'].map(function (f) {
       return document.fonts.load(f, txt).catch(function () {});
     })).then(function () { clearTimeout(glyphTimer); glyphTimer = setTimeout(function () { render(); schedThumbs(); }, 50); });
   }
