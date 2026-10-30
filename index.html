@@ -246,6 +246,9 @@ canvas#cv { border-radius: 12px; }
 .modesw button { background: none; border: 0; color: #9a9aa0; font-family: var(--font-body); font-size: 0.82rem; font-weight: 700; padding: 3px 14px; border-radius: 999px; }
 .modesw button.on { color: #ffd000; background: rgba(255,255,255,.12); }
 .shutterbtn.photo i { background: #fff; }
+.shutterrow { position: relative; }
+.delphoto { position: absolute; left: 62px; top: -6px; width: 26px; height: 26px; border-radius: 50%; border: 2px solid #1c1c1e; background: #ff3b30; color: #fff; font-size: 1rem; font-weight: 800; line-height: 1; padding: 0; display: grid; place-items: center; z-index: 3; }
+.delphoto[hidden] { display: none; }
 /* phone sizing: keep the preview big while a panel is open */
 header h1 { white-space: nowrap; font-size: 1rem; }
 header { height: 48px; }
@@ -450,6 +453,7 @@ header { height: 48px; }
         <span class="thumb" id="thumbMain"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></svg></span>
         <span id="mainLabel">写真</span>
         </button>
+      <button class="delphoto" type="button" id="delMain" aria-label="写真を消す" hidden>×</button>
       <button class="shutterbtn" type="button" id="shutterBtn" aria-label="保存・録画"><i></i></button>
       <button class="flipbtn" type="button" id="camFlip" aria-label="カメラを使う"><svg viewBox="0 0 24 24"><path d="M4 9V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3"/><path d="M20 15v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3"/><path d="m17 6 3 3 3-3"/><path d="m7 18-3-3-3 3"/></svg></button>
     </div>
@@ -1756,6 +1760,7 @@ header { height: 48px; }
     var el = $(which === "main" ? "thumbMain" : "thumbSub");
     el.style.backgroundImage = url ? "url(" + url + ")" : "";
     if (el.firstElementChild) el.firstElementChild.style.display = url ? "none" : "";
+    if (which === "main") $("delMain").hidden = !url;
   }
   function load(file, which) {
     var url = URL.createObjectURL(file), img = new Image();
@@ -1779,7 +1784,7 @@ header { height: 48px; }
     var bt = blobs.main; blobs.main = blobs.sub; blobs.sub = bt; saveBlob("main", blobs.main); saveBlob("sub", blobs.sub);
     cutChanged(); shapeChanged();
     var bm = $("thumbMain").style.backgroundImage, bs = $("thumbSub").style.backgroundImage;
-    $("thumbMain").style.backgroundImage = bs; $("thumbSub").style.backgroundImage = bm;
+    $("thumbMain").style.backgroundImage = bs; $("thumbSub").style.backgroundImage = bm; $("delMain").hidden = !have.main;
     var sm = $("thumbMain").firstElementChild, ss = $("thumbSub").firstElementChild;
     if (sm) sm.style.display = bs ? "none" : "";
     if (ss) ss.style.display = bm ? "none" : "";
@@ -2409,6 +2414,13 @@ header { height: 48px; }
   };
   cv.addEventListener("mousemove", function (e) { cv.style.cursor = hitInset(e) ? "pointer" : "default"; });
 
+  $("delMain").onclick = function () {
+    if (cam.stream && !cam.rec) camStop();
+    state.main = sample("main"); setThumb("main", ""); have.main = false;
+    blobs.main = null; saveBlob("main", null);
+    cutReset(); shapeChanged();
+    $("sampleNote").hidden = have.sub; redraw();
+  };
   $("reset").onclick = function () {
     state.main = sample("main"); state.sub = sample("sub");
     setThumb("main", ""); setThumb("sub", "");
