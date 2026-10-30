@@ -1025,7 +1025,7 @@ header { height: 48px; }
     var hs = hl.length > 1 ? 46 : 62, hfs = hs;
     hl.forEach(function (l) { hfs = Math.min(hfs, fit(c, charsText(l), "900", SANS, hs, 480, 24)); });
     c.font = "900 " + hfs + "px " + SANS; c.letterSpacing = Math.round(hfs * -0.03) + "px";
-    hl.forEach(function (l, n) { drawRich(c, l, 400, 250 + (n - (hl.length - 1) / 2) * (hfs + 14), "#fff", false); });
+    hl.forEach(function (l, n) { c.font = (n === 0 ? "900 " : "700 ") + hfs + "px " + SANS; drawRich(c, l, 400, 250 + (n - (hl.length - 1) / 2) * (hfs + 14), "#fff", false); });
     c.letterSpacing = "0px";
     if (t.sub) {
       rr(c, 450, 310, 460, 54, 6); c.fillStyle = "rgba(255,255,255,.96)"; c.fill();
@@ -1069,7 +1069,8 @@ header { height: 48px; }
         while (a < l.length) {
           col = l[a].col; b = a; run = "";
           while (b < l.length && l[b].col === col) run += l[b++].ch;
-          c.lineWidth = Math.round(fs2 * 0.15); c.strokeStyle = col ? "#fff" : "#10204a"; c.strokeText(run, x, y);
+          c.lineWidth = Math.round(fs2 * (col ? 0.2 : 0.16)); c.strokeStyle = "#000"; c.strokeText(run, x, y);
+          if (col) { c.lineWidth = Math.round(fs2 * 0.1); c.strokeStyle = "#fff"; c.strokeText(run, x, y); }
           c.fillStyle = col || "#fff"; c.fillText(run, x, y);
           x += c.measureText(run).width; a = b;
         }
