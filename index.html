@@ -1427,6 +1427,7 @@ header { height: 48px; }
   var state = { cur: "news", main: sample("main"), sub: sample("sub") };
 
   /* empty text must not make the frame's boxes vanish: an invisible placeholder keeps each box drawn (and tappable) */
+  var EXAMPLES = JSON.parse(JSON.stringify(texts)), noEx = false;
   var KEEP = {
     news: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
     newsw: ["name", "tag", "headline", "place", "when", "tag2", "ticker", "time", "suf"],
@@ -1492,8 +1493,28 @@ header { height: 48px; }
     }
     return origStrokeText.apply(this, arguments);
   }
+  /* an empty field shows its example text faintly on the preview (never in saved pictures or recordings), and a tap on it opens the editor */
+  function showEx() { return !noEx && animSec === undefined && !(typeof cam !== "undefined" && cam && cam.rec); }
+  function drawExample(c, s, x, y) {
+    var m = s.match(/^　　　(​+)/), pk = m && FIELD_KEYS[m[1].length - 1], ex = pk && EXAMPLES[state.cur] && EXAMPLES[state.cur][pk];
+    ex = ex ? plain(ex).split("\n").filter(function (l) { return l; }) : [];
+    if (!ex.length) return false;
+    var size = parseFloat((c.font.match(/(\d+(?:\.\d+)?)px/) || [0, 30])[1]), pf = c.font, wmax = 0, i;
+    ex.forEach(function (l) { wmax = Math.max(wmax, c.measureText(l).width); });
+    var lim = cv.width * 0.8;
+    if (wmax > lim) { c.font = pf.replace(/(\d+(?:\.\d+)?)px/, (size * lim / wmax).toFixed(1) + "px"); size = size * lim / wmax; }
+    c.save(); c.globalAlpha *= 0.4;
+    ex.forEach(function (l, j) {
+      recordText.rec.call(c, l, x, y + j * size * 1.15);
+      regions[regions.length - 1].text = s;
+      origFillText.call(c, l, x, y + j * size * 1.15);
+    });
+    c.restore(); c.font = pf;
+    return true;
+  }
   function recordText(txt, x, y) {
     var col = null;
+    if (showEx() && /^　　　​+$/.test(String(txt)) && drawExample(this, String(txt), x, y)) return;
     try { col = colorFor(txt); } catch (e) {}
     if (col) {
       var pf = this.fillStyle; this.fillStyle = col;
@@ -2042,8 +2063,9 @@ header { height: 48px; }
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     done("この端末・ブラウザは共有に対応していないため、ファイルを保存しました。");
   }
+  function cleanBlob(cb, type) { noEx = true; render(); cv.toBlob(cb, type); noEx = false; render(); }
   $("share").onclick = function () {
-    cv.toBlob(function (blob) {
+    cleanBlob(function (blob) {
       if (!blob) { $("msg").textContent = "画像の書き出しに失敗しました。"; return; }
       shareFile(blob, "news.png", "image/png", function (m) { $("msg").textContent = m; });
     }, "image/png");
@@ -3070,7 +3092,7 @@ header { height: 48px; }
       $("msg").textContent = "この画面ではコピーできません。中央の保存ボタンで画像を保存してください。";
       return;
     }
-    cv.toBlob(function (blob) {
+    cleanBlob(function (blob) {
       if (!blob) { $("msg").textContent = "画像の書き出しに失敗しました。"; return; }
       navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]).then(
         function () { $("msg").textContent = "画像をコピーしました。そのまま貼り付けられます。"; },
@@ -3087,7 +3109,7 @@ header { height: 48px; }
   $("save").onclick = function () {
     $("msg").textContent = "";
     var name = "frame-" + state.cur + ".png";
-    cv.toBlob(function (blob) {
+    cleanBlob(function (blob) {
       if (!blob) { $("msg").textContent = "画像の書き出しに失敗しました。"; return; }
       if (!downloads) {
         var a = document.createElement("a");
